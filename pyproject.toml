@@ -6,11 +6,16 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "f3d>=3.4.1",
+    "ipykernel>=7.2.0",
+    "jupytext>=1.19.1",
     "libigl>=2.6.1",
+    "notebook>=7.5.3",
     "numpy>=2.4.1",
     "pyvista>=0.46.5",
     "scipy>=1.17.0",
+    "scipy-stubs~=1.17.0",
     "torch>=2.10.0",
     "tqdm>=4.67.1",
     "vtk>=9.5.2",
+    "wand>=0.6.13",
 ]
