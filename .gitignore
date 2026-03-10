@@ -163,3 +163,4 @@ cython_debug/
 # PyCharm
 .idea/
 
+*.ipynb
