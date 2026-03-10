@@ -1,65 +1,65 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.19.1
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
 # %%
 import asyncio
-import gc
+from concurrent.futures.process import ProcessPoolExecutor
+from concurrent.futures.thread import ThreadPoolExecutor
 
 import igl
 import numpy as np
+import scipy.sparse as sp
 import vtk
-from scipy.sparse.linalg import cg, LinearOperator
 from scipy.spatial import cKDTree
 from tqdm import tqdm
 
 # %%
-r = vtk.vtkRenderer()
+globals().setdefault('rwis', vtk.vtkInteractorStyleSwitch())
+rwis: vtk.vtkInteractorStyleSwitch
 
-# %%
-r.use_ssao = False
-r.use_depth_peeling = True
-r.use_fxaa = True
+globals().setdefault('rwi', vtk.vtkRenderWindowInteractor())
+rwi: vtk.vtkRenderWindowInteractor
+
+globals().setdefault('rw', vtk.vtkRenderWindow())
+rw: vtk.vtkRenderWindow
+
+globals().setdefault('r', vtk.vtkRenderer())
+r: vtk.vtkRenderer
+
+rwi.SetInteractorStyle(rwis)
+rwi.SetRenderWindow(rw)
+rw.AddRenderer(r)
+
+rwis.SetCurrentStyleToTrackballCamera()
 
 
-# %%
-async def _loop():
-    rwi = vtk.vtkRenderWindowInteractor()
-    rwi.SetRenderWindow(rw := vtk.vtkRenderWindow())
-    rw.AddRenderer(r)
-
-    rwi.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
-
+async def loop():
     rwi.Initialize()
-
+    rwi.done = False
     while not rwi.done:
-        # print('running!')
         rwi.ProcessEvents()
         rwi.Render()
-        await asyncio.sleep(1 / 20)
-
-    del rw
-    del rwi
-
-    gc.collect()
+        try:
+            await asyncio.sleep(1 / 30)
+        except asyncio.CancelledError:
+            rwi.done = True
 
 
-_loop_task = asyncio.ensure_future(_loop())
+if f := globals().get('_future'):
+    f.cancel()
+
+_future = asyncio.ensure_future(loop())
+
+# %%
+
+r.UseDepthPeelingOn()
+r.UseFXAAOn()
+r.UseSSAOOn()
 
 
 # %%
 pipe = vtk.vtkSTLReader(file_name='devel/pancake.stl')
 pipe = vtk.vtkTriangleFilter(input_connection=pipe.output_port)
+pipe = vtk.vtkDecimatePro(input_connection=pipe.output_port)
+pipe.preserve_topology = True
+pipe.target_reduction = 0.2
 pipe = original = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
 
 pipe = fnorms = vtk.vtkTriangleMeshPointNormals(input_connection=pipe.output_port)
@@ -68,17 +68,6 @@ pipe.use_all_points = True
 
 pipe.Update()
 
-r.RemoveAllViewProps()
-
-m = vtk.vtkPolyDataMapper()
-a = vtk.vtkActor(mapper=m)
-r.AddActor(a)
-
-# %%
-a.GetProperty().opacity = 0.2
-a.GetProperty().line_width = 1
-a.GetProperty().edge_color = (1.0, 1.0, 1.0)
-
 # %%
 
 verts = fnorms.output.points
@@ -86,62 +75,127 @@ norms = fnorms.output.point_data['Normals']
 polys = np.reshape(fnorms.output.polys.connectivity_array, (-1, 3), order='C')
 edges = np.reshape(fedges.output.lines.connectivity_array, (-1, 2), order='C')
 
-print(verts.shape)
-
 N = len(verts)
 K = 2  # number of links for each vertex
 r_max = 0.30
 
+print(verts.shape)
+
+assert K == 2, "K > 2 causes runaway where relation is asymmetric."
+
 links = []
 tree = cKDTree(verts)
-indexes = tree.query_ball_point(verts, r_max)
 
-for vert, norm, idxs in tqdm(zip(verts, norms, indexes), total=N):
-    side_mask = norms[idxs] @ norm < 0  # restrict to points whose normals point "down".
-    idxs = np.compress(side_mask, idxs)
-    # side_mask tends to remove more vertices, so do that first
 
-    down_mask = (verts[idxs] - vert) @ norm < 0  # restrict to points whose location is "down".
-    idxs = np.compress(down_mask, idxs)
+def f(vert, norm):
+    idxs = tree.query_ball_point(vert, r_max)
+    idxs = np.asarray(idxs)
 
-    fwd = idxs  # need to be able to convert the query result back to global indexes.
-    _, idxs = cKDTree(verts[idxs]).query(vert, k=K)
-    links.append(np.take(fwd, np.atleast_1d(idxs)))
+    vecs = verts[idxs] - vert
 
-# %%
+    mask = vecs @ norm <= 0
+    idxs = np.compress(mask, idxs, axis=0)
+    vecs = np.compress(mask, vecs, axis=0)
+
+    vecs *= np.expand_dims(np.exp(norms[idxs] @ norm), 1)
+
+    _, subs = cKDTree(vecs).query([0, 0, 0], k=K)
+    subs = np.atleast_1d(subs)
+    return np.take(idxs, subs)
 
 pdata = vtk.vtkPolyData()
-
-pdata.SetLines(vtk.vtkCellArray())
-for src, dsts in enumerate(links):
-    for dst in dsts:
-        pdata.InsertNextCell(vtk.VTK_LINE, 2, [src, dst])
-
-verts = np.array(fnorms.output.points)  # copy to avoid overwriting fnorms data
-verts -= np.mean(verts, axis=0)
-verts /= np.sqrt(np.mean(verts * verts))
 pdata.points = verts
+pdata.SetLines(vtk.vtkCellArray())
 
-L = igl.cotmatrix(verts, polys)
+m = vtk.vtkPolyDataMapper()
+m.SetInputData(pdata)
+a = vtk.vtkActor()
+a.SetMapper(m)
+a.GetProperty().color = (1.0, 1.0, 1.0)
+a.GetProperty().opacity = 0.1
 
-m.input_data = pdata
+r.RemoveAllViewProps()
+r.AddActor(a)
+
+# with ThreadPoolExecutor() as tx:
+r.RemoveAllViewProps()
+r.AddActor(a)
+
+with ProcessPoolExecutor() as px:
+    idxss = []
+    for src, *dsts in tqdm(px.map(f, verts, norms, chunksize=32), total=N):
+        idxss.append((src, *dsts))
+        for dst in dsts:
+            pdata.InsertNextCell(vtk.VTK_LINE, 2, [src, dst])
+        m.Modified()
+        r.Modified()
+        r.ResetCameraClippingRange()
+        rwi.Modified()
+        await asyncio.sleep(0)
+
+idxss = np.array(idxss)
 
 
 # %%
-rate = 0.1
 
-M = igl.massmatrix(verts, polys, igl.MASSMATRIX_TYPE_BARYCENTRIC)
-
-# verts = spsolve(M - rate * L, M * verts, "MMD_AT_PLUS_A")
-
-Q = M - rate * L
-prec = LinearOperator(Q.shape, matvec=Q.diagonal().__rtruediv__)
-
-for i in range(3):
-    verts[..., i], code = cg(Q, M * verts[..., i], rtol=1e-5, x0=verts[..., i], M=prec)
+verts = np.array(fnorms.output.points)
 
 verts -= np.mean(verts, axis=0)
 verts /= np.sqrt(np.mean(verts * verts))
+
+free = np.linalg.norm(verts, axis=1) < 2.5
+
+verts -= np.mean(verts[~free], axis=0)
+verts /= np.sqrt(np.mean(verts[~free] * verts[~free]))
+
+pdata.points = verts
+
+vec = np.subtract(verts[links], np.expand_dims(verts, 1))
+target_lengths = np.linalg.norm(vec, axis=2)
+
+# L = igl.cotmatrix(verts, polys)
+
+chords = verts[idxss, :].reshape((len(verts), -1))
+L = igl.cotmatrix(chords, polys)
+
+# %%
+
+free = ~free
+
+
+# %%
+rate = 2.04
+
+# M = igl.massmatrix(np.asarray(verts), np.asarray(polys), igl.MASSMATRIX_TYPE_BARYCENTRIC)
+
+chords = verts[idxss, :].reshape((len(verts), -1))
+M = igl.massmatrix(np.asarray(chords), np.asarray(polys), igl.MASSMATRIX_TYPE_BARYCENTRIC)
+
+Q = M - rate * L
+B = M * verts
+
+solver = sp.linalg.factorized(Q[free, :][:, free])
+verts[free, :] = solver(B[free, :] - Q[free, :][:, ~free] @ verts[~free, :])
+# verts[free, :] = solver(B[free, :] - Q[free, :][:, ~free] @ verts[~free, :])
+
+# solver = sp.linalg.factorized(Q)
+# verts[...] = solver(B)
+
+# Gauss-Newton Distance Constraints
+
+vec = np.subtract(verts[links], np.expand_dims(verts, 1))
+rad = np.linalg.norm(vec, axis=-1)
+
+drad = (target_lengths - rad) / 2 * 0.01
+dvec = (np.linalg.pinv(vec) @ (rad * drad)[..., np.newaxis]).squeeze(-1)
+verts -= dvec
+
+# verts -= np.mean(verts, axis=0)
+# verts /= np.sqrt(np.mean(verts * verts))
+
+verts -= np.mean(verts[~free], axis=0)
+verts /= np.sqrt(np.mean(verts[~free] * verts[~free]))
+
 
 pdata.points = verts
 
