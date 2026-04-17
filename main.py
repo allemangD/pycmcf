@@ -72,7 +72,7 @@ pipe.Update()
 
 verts = fnorms.output.points
 norms = fnorms.output.point_data['Normals']
-polys = np.reshape(fnorms.output.polys.connectivity_array, (-1, 3), order='C')
+polys = np.reshape(fnorms.output.faces.connectivity_array, (-1, 3), order='C')
 edges = np.reshape(fedges.output.lines.connectivity_array, (-1, 2), order='C')
 
 N = len(verts)
