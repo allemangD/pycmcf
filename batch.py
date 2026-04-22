@@ -10,11 +10,16 @@ import igl
 import numpy as np
 import scipy as sp
 import vtk
-from scipy.sparse.linalg import spsolve
 from scipy.spatial import cKDTree
+from sksparse.cholmod import cho_solve
 from tqdm import tqdm
-
-from vtk import vtkPolyData
+from vtk import (
+    vtkPolyData,
+    vtkInformation,
+    vtkInformationVector,
+    vtkStreamingDemandDrivenPipeline,
+)
+from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
 
 np.set_printoptions(suppress=True)
 
@@ -219,9 +224,6 @@ def link():
 
             jdxs = jdxs[arg[:1]]
 
-            # N[jdxs] @ N[idx]
-            # V[jdxs] - V[idx]
-
             return [(idx, jdx) for jdx in jdxs]
 
         with ProcessPoolExecutor() as ex:
@@ -236,59 +238,255 @@ def link():
     return data
 
 
+def save_anim(
+    file_name,
+    verts: list[np.ndarray],
+    faces: np.ndarray,
+    edges: np.ndarray | None,
+):
+    inds = np.arange(len(verts))
+
+    A = igl.adjacency_matrix(faces)
+    Cn, C, Ck = igl.connected_components(A)
+
+    if faces is not None:
+        poly_array = vtk.vtkCellArray()
+        for i, j, k in faces:
+            poly_array.InsertNextCell(3, (i, j, k))
+    else:
+        poly_array = None
+
+    if edges is not None:
+        line_array = vtk.vtkCellArray()
+        for i, j in edges:
+            line_array.InsertNextCell(2, (i, j))
+    else:
+        line_array = None
+
+    class Source(VTKPythonAlgorithmBase):
+        def __init__(self, **kwargs):
+            VTKPythonAlgorithmBase.__init__(
+                self, nInputPorts=0, nOutputPorts=1, outputType="vtkPolyData"
+            )
+            for name, value in kwargs.items():
+                setattr(self, name, value)
+
+        def RequestInformation(
+            self,
+            request: vtkInformation,
+            ins_infos: tuple[()],
+            out_infos: vtkInformationVector,
+        ):
+            out_info = out_infos.GetInformationObject(0)
+
+            out_info.Set(vtkStreamingDemandDrivenPipeline.TIME_STEPS(), inds, len(inds))
+            out_info.Set(
+                vtkStreamingDemandDrivenPipeline.TIME_RANGE(), [inds[0], inds[-1]], 2
+            )
+
+            return 1
+
+        def RequestData(
+            self,
+            request: vtkInformation,
+            ins_infos: tuple[()],
+            out_infos: vtkInformationVector,
+        ):
+            out_info = out_infos.GetInformationObject(0)
+            i = int(out_info.Get(vtkStreamingDemandDrivenPipeline.UPDATE_TIME_STEP()))
+
+            out_data = vtkPolyData.GetData(out_info)
+
+            out_data.points = verts[i]
+            out_data.point_data["C"] = C
+            out_data.polys = poly_array
+            out_data.lines = line_array
+
+            progress.update(1)
+            return 1
+
+    with tqdm(total=len(verts), desc=f"write {file_name}") as progress:
+        pipe = Source()
+        pipe = vtk.vtkHDFWriter(input_connection=pipe.output_port, file_name=file_name)
+        pipe.write_all_time_steps = True
+        pipe.Write()
+
+
 @cached()
-def flow():
+def flow_cmcf():
     data = link()
 
     V = np.asarray(data.points, copy=True)
     F = np.reshape(data.polys.connectivity_array, (-1, 3), copy=True)
     E = np.reshape(data.lines.connectivity_array, (-1, 2), copy=True)
+    E_sub = E[np.random.random(len(E)) < 0.05]
 
     A = igl.adjacency_matrix(F)
     Cn, C, Ck = igl.connected_components(A)
+    OUT = np.nonzero(C == 1)
 
-    OUT = np.nonzero(C == 0)
+    V = V - np.mean(V[OUT])
+    V = V / np.sqrt(np.mean(np.square(V[OUT])))
 
-    print(E.shape)
-    print(F.shape)
-    print(V.shape)
-
-    print(np.unique(E[:, 0]).shape)
-
-    V -= np.mean(V[OUT], axis=0, keepdims=True)
-    V /= np.sqrt(np.mean(np.square(V[OUT])))
+    rate = 5e-4
+    grow = 1.1
+    rmax = 1e-1
 
     L0 = igl.cotmatrix(V, F)
 
+    I = 1e-5 * sp.sparse.eye(len(V))
 
-    i, j = np.unstack(E[np.random.random(len(E)) < 0.05], axis=1)
+    Vs = [V]
 
-    P = np.power(np.linalg.norm(V[i] - V[j], axis=1), -1)
-    P /= np.mean(P)
-
-    A = sp.sparse.dok_matrix(L0.shape)
-    A[i, j] = P
-    A[j, i] = P
-
-    G = sp.sparse.csgraph.laplacian(A)
-
-    rate = 5e-3
-    relax = 0.5
-
-    for _ in tqdm(range(6)):
+    for _ in tqdm(range(80), desc="cmcf"):
         M = igl.massmatrix(V, F)
-        energy = relax * G - L0
 
-        V = spsolve(M + rate * energy, M @ V)
+        V = cho_solve(
+            M + I - rate * L0,
+            (M + I) @ V,
+        )
 
         V -= np.mean(V[OUT], axis=0, keepdims=True)
         V /= np.sqrt(np.mean(np.square(V[OUT])))
 
-    V -= np.mean(V, axis=0, keepdims=True)
-    V /= np.sqrt(np.mean(np.square(V)))
-    data.points = V
+        Vs.append(V)
 
+        rate *= grow
+        rate = np.clip(rate, 0, rmax)
+
+    save_anim("devel/anim-cmcf.hdf", Vs, F, E_sub)
+
+    data.points = V
     return data
 
 
-flow()
+@cached()
+def flow_link():
+    data = link()
+
+    V = np.asarray(data.points, copy=True)
+    F = np.reshape(data.polys.connectivity_array, (-1, 3), copy=True)
+    E = np.reshape(data.lines.connectivity_array, (-1, 2), copy=True)
+    E_sub = E[np.random.random(len(E)) < 0.05]
+
+    A = igl.adjacency_matrix(F)
+    Cn, C, Ck = igl.connected_components(A)
+    OUT = np.nonzero(C == 1)
+
+    V = V - np.mean(V[OUT])
+    V = V / np.sqrt(np.mean(np.square(V[OUT])))
+
+    i, j = np.unstack(E, axis=1)
+    P = np.power(np.linalg.norm(V[i] - V[j], axis=1), -1)
+    P /= np.mean(P)
+    A = sp.sparse.dok_matrix((len(V), len(V)))
+    A[i, j] = P
+    A[j, i] = P
+    G = sp.sparse.csgraph.laplacian(A)
+
+    rate = 5e-4
+    grow = 1.1
+    rmax = 1e-1
+
+    relax = 0.9
+
+    L0 = igl.cotmatrix(V, F)
+
+    I = 1e-5 * sp.sparse.eye(len(V))
+
+    Vs = [V]
+
+    for _ in tqdm(range(80), desc="link"):
+        M = igl.massmatrix(V, F)
+
+        V = cho_solve(
+            M + I - rate * L0 + relax * G,
+            (M + I + relax * G) @ V,
+        )
+
+        V -= np.mean(V[OUT], axis=0, keepdims=True)
+        V /= np.sqrt(np.mean(np.square(V[OUT])))
+
+        Vs.append(V)
+
+        rate *= grow
+        rate = np.clip(rate, 0, rmax)
+
+    save_anim(f"devel/anim-link-{int(relax * 100)}.hdf", Vs, F, E_sub)
+
+    data.points = V
+    return data
+
+
+@cached()
+def flow_pred_corr():
+    data = link()
+
+    V = np.asarray(data.points, copy=True)
+    F = np.reshape(data.polys.connectivity_array, (-1, 3), copy=True)
+    E = np.reshape(data.lines.connectivity_array, (-1, 2), copy=True)
+    E_sub = E[np.random.random(len(E)) < 0.05]
+
+    A = igl.adjacency_matrix(F)
+    Cn, C, Ck = igl.connected_components(A)
+    OUT = np.nonzero(C == 1)
+
+    V = V - np.mean(V[OUT])
+    V = V / np.sqrt(np.mean(np.square(V[OUT])))
+
+    i, j = np.unstack(E, axis=1)
+    true_dist = np.linalg.norm(V[i] - V[j], axis=1, keepdims=True)
+
+    rate = 5e-4
+    grow = 1.1
+    rmax = 1e-1
+
+    relax = 0.9
+
+    L0 = igl.cotmatrix(V, F)
+
+    I = 1e-5 * sp.sparse.eye(len(V))
+
+    Vs = [V]
+
+    for _ in tqdm(range(80), desc="corr"):
+        M = igl.massmatrix(V, F)
+
+        V = cho_solve(
+            M + I - rate * L0,
+            (M + I) @ V,
+        )
+
+        V -= np.mean(V[OUT], axis=0, keepdims=True)
+        V /= np.sqrt(np.mean(np.square(V[OUT])))
+
+        diff = V[i] - V[j]
+        dist = np.linalg.norm(diff, axis=1, keepdims=True)
+        norm = diff / dist
+        extra = dist - true_dist
+        fixup = -norm * extra / 2  # amount to push 'i' vertex.
+
+        accum = np.zeros((len(V), 3))
+        weight = np.zeros((len(V), 1))
+
+        accum[i] += fixup
+        weight[i] += 1
+        mask = weight > 0
+
+        np.divide(accum, weight, out=accum, where=mask)
+        np.add(V, accum * relax, out=V, where=mask)
+
+        Vs.append(V)
+
+        rate *= grow
+        rate = np.clip(rate, 0, rmax)
+
+    save_anim(f"devel/anim-pc-{int(relax * 100)}.hdf", Vs, F, E_sub)
+
+    data.points = V
+    return data
+
+
+flow_cmcf()
+flow_link()
+flow_pred_corr()
