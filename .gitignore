@@ -1,6 +1,7 @@
 ### CMCF outputs
 cmcf-out/
 devel/
+data/
 
 ### Python template
 # Byte-compiled / optimized / DLL files
