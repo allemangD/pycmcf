@@ -24,19 +24,6 @@ from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
 np.set_printoptions(suppress=True)
 
 
-def normalize(v):
-    center = np.mean(v, axis=0, keepdims=True)
-    v -= center
-
-    scale = np.sqrt(np.mean(np.square(v), keepdims=True))
-    v /= scale
-
-    def denormalize(v):
-        return np.asarray(v) * scale + center
-
-    return denormalize
-
-
 class cached_access:
     def __init__(self, func: types.FunctionType, force: bool):
         self.func = func
@@ -97,8 +84,8 @@ def original():
     pipe = vtk.vtkAppendPolyData()
 
     for path in [
-        "devel/OASIS4-00010_0102_00-00_BRAIN-T1-SYNTH-3D-SYNTH-PRE_hdrfix_n4_reg_haca3_lesionfilled_slant_wlesions_surface-inner.vtk",
-        "devel/OASIS4-00010_0102_00-00_BRAIN-T1-SYNTH-3D-SYNTH-PRE_hdrfix_n4_reg_haca3_lesionfilled_slant_wlesions_surface-outer.vtk",
+        "data/OASIS4-00010_0102_00-00_BRAIN-T1-SYNTH-3D-SYNTH-PRE_hdrfix_n4_reg_haca3_lesionfilled_slant_wlesions_surface-inner.vtk",
+        "data/OASIS4-00010_0102_00-00_BRAIN-T1-SYNTH-3D-SYNTH-PRE_hdrfix_n4_reg_haca3_lesionfilled_slant_wlesions_surface-outer.vtk",
     ]:
         read = vtk.vtkPolyDataReader(file_name=path)
         pipe.AddInputConnection(read.output_port)
@@ -243,7 +230,10 @@ def save_anim(
     verts: list[np.ndarray],
     faces: np.ndarray,
     edges: np.ndarray | None,
+    point_data: dict[str, np.ndarray] | None = None,
 ):
+    point_data = point_data or {}
+
     inds = np.arange(len(verts))
 
     A = igl.adjacency_matrix(faces)
@@ -299,6 +289,8 @@ def save_anim(
 
             out_data.points = verts[i]
             out_data.point_data["C"] = C
+            for name, data in point_data.items():
+                out_data.point_data[name] = data
             out_data.polys = poly_array
             out_data.lines = line_array
 
@@ -321,11 +313,18 @@ def flow_cmcf():
     E = np.reshape(data.lines.connectivity_array, (-1, 2), copy=True)
     E_sub = E[np.random.random(len(E)) < 0.05]
 
+    N = igl.per_vertex_normals(V, F)
+    M = igl.massmatrix(V, F)
+    Minv = sp.sparse.diags(1 / M.diagonal())
+    L = igl.cotmatrix(V, F)
+    HN = -(Minv @ L) @ V
+    H = np.einsum("ic,ic->i", N, HN)
+
     A = igl.adjacency_matrix(F)
     Cn, C, Ck = igl.connected_components(A)
     OUT = np.nonzero(C == 1)
 
-    V = V - np.mean(V[OUT])
+    V = V - np.mean(V, axis=0, keepdims=True)
     V = V / np.sqrt(np.mean(np.square(V[OUT])))
 
     rate = 5e-4
@@ -346,7 +345,7 @@ def flow_cmcf():
             (M + I) @ V,
         )
 
-        V -= np.mean(V[OUT], axis=0, keepdims=True)
+        V -= np.mean(V, axis=0, keepdims=True)
         V /= np.sqrt(np.mean(np.square(V[OUT])))
 
         Vs.append(V)
@@ -354,7 +353,7 @@ def flow_cmcf():
         rate *= grow
         rate = np.clip(rate, 0, rmax)
 
-    save_anim("devel/anim-cmcf.hdf", Vs, F, E_sub)
+    save_anim("devel/anim-cmcf.hdf", Vs, F, E_sub, point_data={"H": H})
 
     data.points = V
     return data
@@ -373,7 +372,7 @@ def flow_link():
     Cn, C, Ck = igl.connected_components(A)
     OUT = np.nonzero(C == 1)
 
-    V = V - np.mean(V[OUT])
+    V = V - np.mean(V, axis=0, keepdims=True)
     V = V / np.sqrt(np.mean(np.square(V[OUT])))
 
     i, j = np.unstack(E, axis=1)
@@ -404,7 +403,7 @@ def flow_link():
             (M + I + relax * G) @ V,
         )
 
-        V -= np.mean(V[OUT], axis=0, keepdims=True)
+        V -= np.mean(V, axis=0, keepdims=True)
         V /= np.sqrt(np.mean(np.square(V[OUT])))
 
         Vs.append(V)
@@ -431,7 +430,7 @@ def flow_pred_corr():
     Cn, C, Ck = igl.connected_components(A)
     OUT = np.nonzero(C == 1)
 
-    V = V - np.mean(V[OUT])
+    V = V - np.mean(V, axis=0, keepdims=True)
     V = V / np.sqrt(np.mean(np.square(V[OUT])))
 
     i, j = np.unstack(E, axis=1)
@@ -457,7 +456,7 @@ def flow_pred_corr():
             (M + I) @ V,
         )
 
-        V -= np.mean(V[OUT], axis=0, keepdims=True)
+        V -= np.mean(V, axis=0, keepdims=True)
         V /= np.sqrt(np.mean(np.square(V[OUT])))
 
         diff = V[i] - V[j]
