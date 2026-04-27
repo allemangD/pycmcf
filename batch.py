@@ -418,7 +418,7 @@ def flow_link():
 
 
 @cached()
-def flow_pred_corr():
+def flow_phased():
     data = link()
 
     V = np.asarray(data.points, copy=True)
@@ -488,4 +488,4 @@ def flow_pred_corr():
 
 flow_cmcf()
 flow_link()
-flow_pred_corr()
+flow_phased()
