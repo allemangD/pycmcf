@@ -11,7 +11,7 @@ import numpy as np
 import scipy as sp
 import vtk
 from scipy.spatial import cKDTree
-from sksparse.cholmod import cho_solve
+
 from tqdm import tqdm
 from vtk import (
     vtkPolyData,
@@ -23,6 +23,14 @@ from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
 
 np.set_printoptions(suppress=True)
 
+try:
+    import sksparse.cholmod
+    cho_solve = sksparse.cholmod.cho_solve
+except AttributeError:
+    def cho_solve(A, b):
+        return sksparse.cholmod.cholesky(A)(b)
+except ImportError:
+    from scipy.sparse.linalg import spsolve as cho_solve
 
 class cached_access:
     def __init__(self, func: types.FunctionType, force: bool):
@@ -136,6 +144,22 @@ def decimate():
     pipe = vtk.vtkTriangleFilter(input_connection=pipe.output_port)
     pipe.Update()
     data = pipe.output
+
+    pipe = vtk.vtkPolyDataConnectivityFilter(input_data=data)
+    pipe.SetExtractionModeToSpecifiedRegions()
+    pipe.AddSpecifiedRegion(0)
+    pipe.Update()
+    pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
+    pipe.SetFileName('data/decimated-0.vtk')
+    pipe.Update()
+
+    pipe = vtk.vtkPolyDataConnectivityFilter(input_data=data)
+    pipe.SetExtractionModeToSpecifiedRegions()
+    pipe.AddSpecifiedRegion(1)
+    pipe.Update()
+    pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
+    pipe.SetFileName('data/decimated-1.vtk')
+    pipe.Update()
 
     return data
 
@@ -486,6 +510,8 @@ def flow_phased():
     return data
 
 
-flow_cmcf()
-flow_link()
-flow_phased()
+decimate()
+
+# flow_cmcf()
+# flow_link()
+# flow_phased()

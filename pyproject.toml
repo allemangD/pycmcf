@@ -5,19 +5,13 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    #    "f3d",
-    #    "ipykernel",
     "itk",
-    #    "jupytext",
     "libigl",
-    #    "notebook",
     "numpy",
-    #    "pyvista",
     "ruff>=0.15.10",
-    "scikit-sparse>=0.5.0",
+    "scikit-sparse~=0.4.0",
     "scipy",
     "scipy-stubs~=1.17.0",
-    #    "torch",
     "tqdm",
     "vtk",
     #    "wand",

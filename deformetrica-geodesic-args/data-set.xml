@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<data-set>
+        <subject id="outer"><visit id="outer"><filename object_id="surf">decimated-outer.vtk</filename></visit></subject>
+        <subject id="inner"><visit id="inner"><filename object_id="surf">decimated-inner.vtk</filename></visit></subject>
+</data-set>
+

@@ -520,7 +520,7 @@ requires-dist = [
     { name = "libigl" },
     { name = "numpy" },
     { name = "ruff", specifier = ">=0.15.10" },
-    { name = "scikit-sparse", specifier = ">=0.5.0" },
+    { name = "scikit-sparse", specifier = "~=0.4.0" },
     { name = "scipy" },
     { name = "scipy-stubs", specifier = "~=1.17.0" },
     { name = "tqdm" },
@@ -575,14 +575,13 @@ wheels = [
 
 [[package]]
 name = "scikit-sparse"
-version = "0.5.0"
+version = "0.4.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
-    { name = "packaging" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/70/2351a8755de0b3d9821864299d6bba3feafb91e106b9b762a2675910392e/scikit_sparse-0.5.0.tar.gz", hash = "sha256:217579251b1d91dcfeab5a16d6408f462dc353939f9e5dfa65ec0b41f0b603dc", size = 106285, upload-time = "2026-03-03T19:18:41.586Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/33/f2/b391faf6120b72b994b574caef9dac5ea2b7667de59fbd3c8336c07403b3/scikit_sparse-0.4.16.tar.gz", hash = "sha256:3baf49ac98ae8cc4357005af49a0df93a6a53f4e61708705da2942ea4fa61a56", size = 214435, upload-time = "2025-04-27T18:20:37.052Z" }
 
 [[package]]
 name = "scipy"

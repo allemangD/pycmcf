@@ -2,6 +2,8 @@
 cmcf-out/
 devel/
 data/
+output/
+*.vtk
 
 ### Python template
 # Byte-compiled / optimized / DLL files
