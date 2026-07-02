@@ -17,6 +17,7 @@ from vtk import (
     vtkPolyData,
     vtkInformation,
     vtkInformationVector,
+    vtkPolyData,
     vtkStreamingDemandDrivenPipeline,
 )
 from vtkmodules.util.vtkAlgorithm import VTKPythonAlgorithmBase
@@ -25,12 +26,15 @@ np.set_printoptions(suppress=True)
 
 try:
     import sksparse.cholmod
+
     cho_solve = sksparse.cholmod.cho_solve
 except AttributeError:
+
     def cho_solve(A, b):
         return sksparse.cholmod.cholesky(A)(b)
 except ImportError:
     from scipy.sparse.linalg import spsolve as cho_solve
+
 
 class cached_access:
     def __init__(self, func: types.FunctionType, force: bool):
@@ -142,23 +146,27 @@ def decimate():
     pipe = vtk.vtkQuadricDecimation(input_connection=pipe.output_port)
     pipe.SetTargetReduction(DECIMATE)
     pipe = vtk.vtkTriangleFilter(input_connection=pipe.output_port)
+    pipe = vtk.vtkCurvatures(input_connection=pipe.output_port)
+    pipe.SetCurvatureTypeToMean()
     pipe.Update()
     data = pipe.output
 
     pipe = vtk.vtkPolyDataConnectivityFilter(input_data=data)
     pipe.SetExtractionModeToSpecifiedRegions()
     pipe.AddSpecifiedRegion(0)
+    pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
     pipe.Update()
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-    pipe.SetFileName('data/decimated-0.vtk')
+    pipe.SetFileName("data/decimated-0.vtk")
     pipe.Update()
 
     pipe = vtk.vtkPolyDataConnectivityFilter(input_data=data)
     pipe.SetExtractionModeToSpecifiedRegions()
     pipe.AddSpecifiedRegion(1)
+    pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
     pipe.Update()
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-    pipe.SetFileName('data/decimated-1.vtk')
+    pipe.SetFileName("data/decimated-1.vtk")
     pipe.Update()
 
     return data
@@ -321,11 +329,77 @@ def save_anim(
             progress.update(1)
             return 1
 
+    pipe = Source()
+
     with tqdm(total=len(verts), desc=f"write {file_name}") as progress:
-        pipe = Source()
-        pipe = vtk.vtkHDFWriter(input_connection=pipe.output_port, file_name=file_name)
-        pipe.write_all_time_steps = True
-        pipe.Write()
+        writer = vtk.vtkHDFWriter(
+            input_connection=pipe.output_port, file_name=file_name
+        )
+        writer.write_all_time_steps = True
+        writer.Write()
+
+
+# todo invoke deformetrica instead of precomputed
+
+@cached()
+def get_inner():
+    read = vtk.vtkPolyDataReader(
+        file_name="deformetrica-geodesic-args/output/PrincipalGeodesicAnalysis__Reconstruction__surf__subject_inner.vtk",
+    )
+    read.Update()
+    return read.output
+
+
+@cached()
+def get_outer():
+    read = vtk.vtkPolyDataReader(
+        file_name="deformetrica-geodesic-args/output/PrincipalGeodesicAnalysis__Reconstruction__surf__subject_outer.vtk",
+    )
+    read.Update()
+    return read.output
+
+
+get_inner()
+get_outer()
+
+@cached()
+def get_diffeo():
+    inner: vtkPolyData = get_inner()
+    outer: vtkPolyData = get_outer()
+
+    assert np.array_equal(
+        np.asarray(inner.GetPolys().GetConnectivityArray()),
+        np.asarray(outer.GetPolys().GetConnectivityArray()),
+    )
+
+    F_u = np.reshape(np.asarray(inner.polys.connectivity_array), (-1, 3))
+    U = np.asarray(inner.points)
+
+    F_v = np.reshape(np.asarray(inner.polys.connectivity_array), (-1, 3))
+    V = np.asarray(outer.points)
+
+    assert np.array_equal(F_u, F_v)
+    assert np.shape(U) == np.shape(V)
+    N = len(U)
+
+    F = F_u
+    C = np.concatenate([U, V], axis=1)
+
+    UV = np.concatenate([U, V], axis=0)
+    E = np.stack([np.arange(N), np.arange(N) + N], axis=1)
+
+    # save_anim("devel/anim-diffeo.hdf", [UV], F, E)
+
+    combo = vtkPolyData()
+    combo.points = UV
+    for e in E:
+        combo.GetLines().InsertNextCell(2, e)
+    for f in F:
+        combo.GetPolys().InsertNextCell(3, f)
+    for f in F + len(U):
+        combo.GetPolys().InsertNextCell(3, f)
+
+    return combo
 
 
 @cached()
@@ -510,6 +584,8 @@ def flow_phased():
     return data
 
 
+# get_diffeo()
+# decimate()
 decimate()
 
 # flow_cmcf()
