@@ -1,6 +1,9 @@
 ### CMCF outputs
 cmcf-out/
 devel/
+data/
+output*/
+*.vtk
 
 ### Python template
 # Byte-compiled / optimized / DLL files
@@ -163,3 +166,4 @@ cython_debug/
 # PyCharm
 .idea/
 
+*.ipynb
