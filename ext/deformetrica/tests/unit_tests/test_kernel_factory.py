@@ -235,20 +235,19 @@ class KeopsKernelTest(KernelTestBase):
     @unittest.skipIf(not torch.cuda.is_available(), 'cuda is not available')
     def test_gpu_mode(self):
 
-        for gpu_mode, cuda_type in [(gpu_mode, cuda_type)
+        for gpu_mode in [gpu_mode
                                     for gpu_mode in [gpu_mode for gpu_mode in dfca.GpuMode]
-                                    for cuda_type in ['float32', 'float64']]:
+                                    ]:
             if gpu_mode is dfca.GpuMode.AUTO:
                 continue   # TODO
-            print('gpu_mode: ' + str(gpu_mode) + ', cuda_type: ' + cuda_type)
+            print('gpu_mode: ' + str(gpu_mode))
 
-            kernel_instance = dfca.kernels.factory(dfca.kernels.Type.KEOPS, gpu_mode=gpu_mode, kernel_width=1., cuda_type=cuda_type)
+            kernel_instance = dfca.kernels.factory(dfca.kernels.Type.KEOPS, gpu_mode=gpu_mode, kernel_width=1.)
 
             x = self.x
             y = self.y
             p = self.p
 
-            if cuda_type == 'float32':
                 dfca.default.update_dtype('float32')
                 x = self.x.float()
                 y = self.y.float()

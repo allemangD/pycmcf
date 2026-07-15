@@ -10,13 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class KeopsKernel(AbstractKernel):
-    def __init__(self, gpu_mode=default.gpu_mode, kernel_width=None, cuda_type=None, **kwargs):
+    def __init__(self, gpu_mode=default.gpu_mode, kernel_width=None, **kwargs):
         super().__init__('keops', gpu_mode, kernel_width)
-
-        if cuda_type is None:
-            cuda_type = default.dtype
-
-        self.cuda_type = cuda_type
 
         self.gamma = 1. / default.tensor_scalar_type([self.kernel_width ** 2])
 
@@ -32,7 +27,7 @@ class KeopsKernel(AbstractKernel):
                  "X = Vi(" + str(dimension) + ")",
                  "Y = Vj(" + str(dimension) + ")",
                  "P = Vj(" + str(dimension) + ")"],
-                reduction_op='Sum', axis=1, cuda_type=cuda_type))
+                reduction_op='Sum', axis=1))
 
             self.point_cloud_convolve.append(Genred(
                 "Exp(-G*SqDist(X,Y)) * P",
@@ -40,7 +35,7 @@ class KeopsKernel(AbstractKernel):
                  "X = Vi(" + str(dimension) + ")",
                  "Y = Vj(" + str(dimension) + ")",
                  "P = Vj(1)"],
-                reduction_op='Sum', axis=1, cuda_type=cuda_type))
+                reduction_op='Sum', axis=1))
 
             self.varifold_convolve.append(Genred(
                 "Exp(-(WeightedSqDist(G, X, Y))) * Square((Nx|Ny)) * P",
@@ -50,7 +45,7 @@ class KeopsKernel(AbstractKernel):
                  "Nx = Vi(" + str(dimension) + ")",
                  "Ny = Vj(" + str(dimension) + ")",
                  "P = Vj(1)"],
-                reduction_op='Sum', axis=1, cuda_type=cuda_type))
+                reduction_op='Sum', axis=1))
 
             self.gaussian_convolve_gradient_x.append(Genred(
                 "(Px|Py) * Exp(-G*SqDist(X,Y)) * (X-Y)",
@@ -59,10 +54,10 @@ class KeopsKernel(AbstractKernel):
                  "Y = Vj(" + str(dimension) + ")",
                  "Px = Vi(" + str(dimension) + ")",
                  "Py = Vj(" + str(dimension) + ")"],
-                reduction_op='Sum', axis=1, cuda_type=cuda_type))
+                reduction_op='Sum', axis=1))
 
     def __eq__(self, other):
-        return AbstractKernel.__eq__(self, other) and self.cuda_type == other.cuda_type
+        return AbstractKernel.__eq__(self, other)
 
     def convolve(self, x, y, p, mode='gaussian'):
         if mode == 'gaussian':

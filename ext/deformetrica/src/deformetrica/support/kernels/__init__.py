@@ -17,10 +17,8 @@ class Type(Enum):
 instance_map = dict()
 
 
-def factory(kernel_type, cuda_type=None, gpu_mode=None, *args, **kwargs):
+def factory(kernel_type,  gpu_mode=None, *args, **kwargs):
     """Return an instance of a kernel corresponding to the requested kernel_type"""
-    if cuda_type is None:
-        cuda_type = default.dtype
     if gpu_mode is None:
         gpu_mode = default.gpu_mode
 
@@ -40,9 +38,9 @@ def factory(kernel_type, cuda_type=None, gpu_mode=None, *args, **kwargs):
         return None
 
     res = None
-    hash = AbstractKernel.hash(kernel_type, cuda_type, gpu_mode, *args, **kwargs)
+    hash = AbstractKernel.hash(kernel_type,  gpu_mode, *args, **kwargs)
     if hash not in instance_map:
-        res = kernel_type.value(gpu_mode=gpu_mode, cuda_type=cuda_type, *args, **kwargs)    # instantiate
+        res = kernel_type.value(gpu_mode=gpu_mode,  *args, **kwargs)    # instantiate
         instance_map[hash] = res
     else:
         res = instance_map[hash]

@@ -21,8 +21,8 @@ class AbstractKernel(ABC):
                and self.kernel_width == other.kernel_width
 
     @staticmethod
-    def hash(kernel_type, cuda_type, gpu_mode, *args, **kwargs):
-        return hash((kernel_type, cuda_type, gpu_mode, frozenset(args), frozenset(kwargs.items())))
+    def hash(kernel_type,  gpu_mode, *args, **kwargs):
+        return hash((kernel_type,  gpu_mode, frozenset(args), frozenset(kwargs.items())))
 
     def __hash__(self, **kwargs):
         return AbstractKernel.hash(self.kernel_type, None, self.gpu_mode, **kwargs)
