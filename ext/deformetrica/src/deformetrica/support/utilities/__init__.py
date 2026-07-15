@@ -231,7 +231,7 @@ def get_best_device(gpu_mode=GpuMode.AUTO):
 def adni_extract_from_file_name(file_name):
     import re
     # file_name = 'sub-ADNI002S0729_ses-M06.vtk'
-    m = re.search('\Asub-ADNI(.+?)_ses-M(.+?).vtk', file_name)
+    m = re.search(r'\Asub-ADNI(.+?)_ses-M(.+?).vtk', file_name)
     if m:
         assert len(m.groups()) == 2
         subject_id = m.group(1)
@@ -244,7 +244,7 @@ def adni_extract_from_file_name(file_name):
 def longitudinal_extract_from_file_name(file_name):
     import re
     # file_name = 's0041_7110_0.nii'
-    m = re.search('\As(.+?)_(.+?)_(.+?).nii', file_name)
+    m = re.search(r'\As(.+?)_(.+?)_(.+?).nii', file_name)
     if m:
         assert len(m.groups()) == 3
         subject_id = m.group(1)

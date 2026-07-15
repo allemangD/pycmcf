@@ -9,7 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-"""
+r"""
 Class with a parametric inverse metric: $$g_{\theta}(q) = \sum_{i=1}^n \alpha_i \exp{-\frac {\|x-q\|^2} {2 \sigma^2}$$ 
 The metric_parameters for this class is the set of symmetric positive definite matrices from which we interpolate. 
 It is a (nb_points, dimension*(dimension+1)/2) tensor, enumerated by lines.

@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-"""
+r"""
 Exponential on \R for 1/(q**2(1-q)) metric i.e. logistic curves.
 """
 
