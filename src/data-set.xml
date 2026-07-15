@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<data-set>
+    <subject id="outer">
+        <visit id="outer">
+            <filename object_id="surf">../data/outer.vtk</filename>
+        </visit>
+    </subject>
+</data-set>
+
