@@ -1,4 +1,4 @@
-__version__ = '4.3.0'
+__version__ = "4.3.0"
 
 # api
 from .api import Deformetrica
@@ -31,6 +31,3 @@ from .support import kernels as kernels
 
 # utils
 from .support import utilities as utils
-
-# gui
-from . import gui as gui
