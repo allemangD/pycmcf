@@ -145,7 +145,7 @@ class ScipyOptimize(AbstractEstimator):
                         "ftol": self.convergence_tolerance,
                         # Number of previous gradients used to approximate the Hessian.
                         "maxcor": self.memory_length,
-                        "disp": False,
+                        # "disp": False,
                     },
                 )
                 msg = result.message

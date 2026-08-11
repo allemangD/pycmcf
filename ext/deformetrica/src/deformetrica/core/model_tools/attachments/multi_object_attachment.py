@@ -1,8 +1,12 @@
 import logging
 
+import igl
+import numpy as np
 import torch
 
-from ....support import utilities
+from deformetrica.core.observations import SurfaceMesh
+from deformetrica.support import utilities
+from deformetrica.support.kernels import AbstractKernel
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +76,15 @@ class MultiObjectAttachment:
 
             elif self.attachment_types[i].lower() == "varifold":
                 distances[i] = self.varifold_distance(
+                    data["landmark_points"][pos : pos + obj1.get_number_of_points()],
+                    obj1,
+                    obj2,
+                    self.kernels[i],
+                )
+                pos += obj1.get_number_of_points()
+
+            elif self.attachment_types[i].lower() == "extendedvarifold":
+                distances[i] = self.extended_varifold_distance(
                     data["landmark_points"][pos : pos + obj1.get_number_of_points()],
                     obj1,
                     obj2,
@@ -168,7 +181,7 @@ class MultiObjectAttachment:
     @staticmethod
     def varifold_distance(points, source, target, kernel):
         """
-        Returns the current distance between the 3D meshes
+        Returns the varifold distance between the 3D meshes
         source and target are SurfaceMesh objects
         points are source points (torch tensor)
         """
@@ -185,6 +198,93 @@ class MultiObjectAttachment:
 
         nalpha = n1 / areaa.unsqueeze(1)
         nbeta = n2 / areab.unsqueeze(1)
+
+        def varifold_scalar_product(x, y, areaa, areab, nalpha, nbeta):
+            return torch.dot(
+                areaa.view(-1),
+                kernel.convolve(
+                    (x, nalpha), (y, nbeta), areab.view(-1, 1), mode="varifold"
+                ).view(-1),
+            )
+
+        if target.norm is None:
+            target.norm = varifold_scalar_product(c2, c2, areab, areab, nbeta, nbeta)
+
+        return (
+            varifold_scalar_product(c1, c1, areaa, areaa, nalpha, nalpha)
+            + target.norm
+            - 2 * varifold_scalar_product(c1, c2, areaa, areab, nalpha, nbeta)
+        )
+
+    @staticmethod
+    def extended_varifold_distance(
+        points: torch.Tensor,
+        source: SurfaceMesh,
+        target: SurfaceMesh,
+        kernel: AbstractKernel,
+    ):
+        """
+        Returns the extended varifold distance between the 3D meshes
+        source and target are SurfaceMesh objects
+        points are source points (torch tensor)
+        """
+        device, _ = utilities.get_best_device(kernel.gpu_mode)
+
+        dtype = str(points.dtype)
+
+        V = utilities.move_data(points, device="cpu")
+        F = utilities.move_data(source.connectivity, device="cpu")
+
+        M = igl.massmatrix(V, F).astype(np.float32)
+        N = igl.per_vertex_normals(V, F).astype(np.float32)
+
+        # L = igl.cotmatrix(V, F).astype(np.float32)
+        # HN = (L * V.detach()) / np.expand_dims(M.diagonal(), 1)
+        # H = np.vecdot(N, HN, axis=1)
+        # K = igl.gaussian_curvature(V, F)
+
+        c1 = utilities.move_data(
+            V,
+            dtype=utilities.get_torch_scalar_type(dtype),
+            device=device,
+        )
+        areaa = utilities.move_data(
+            M.diagonal(),
+            dtype=utilities.get_torch_scalar_type(dtype),
+            device=device,
+        )
+        nalpha = utilities.move_data(
+            N,
+            dtype=utilities.get_torch_scalar_type(dtype),
+            device=device,
+        )
+
+        V = utilities.move_data(target.points, device="cpu")
+        F = utilities.move_data(target.connectivity, device="cpu")
+
+        M = igl.massmatrix(V, F).astype(np.float32)
+        N = igl.per_vertex_normals(V, F).astype(np.float32)
+
+        # L = igl.cotmatrix(V, F).astype(np.float32).tocoo()
+        # HN = (L * V.detach()) / np.expand_dims(M.diagonal(), 1)
+        # H = np.vecdot(N, HN, axis=1)
+        # K = igl.gaussian_curvature(V, F)
+
+        c2 = utilities.move_data(
+            V,
+            dtype=utilities.get_torch_scalar_type(dtype),
+            device=device,
+        )
+        areab = utilities.move_data(
+            M.diagonal(),
+            dtype=utilities.get_torch_scalar_type(dtype),
+            device=device,
+        )
+        nbeta = utilities.move_data(
+            N,
+            dtype=utilities.get_torch_scalar_type(dtype),
+            device=device,
+        )
 
         def varifold_scalar_product(x, y, areaa, areab, nalpha, nbeta):
             return torch.dot(
