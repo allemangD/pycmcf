@@ -677,7 +677,7 @@ if __name__ == "__main__":
 
         # Template information (single template)
         template = et.SubElement(model_xml, "template")
-        for key in xml_parameters.template_specifications.keys():
+        for key in xml_parameters.template_specifications:
             obj = et.SubElement(template, "object")
             obj.set("id", key)
             def_type = et.SubElement(obj, "deformable-object-type")

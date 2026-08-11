@@ -124,7 +124,7 @@ for file in sorted(os.listdir(BASE_DIR + "/data")):
 
 # convert from dict to list
 dataset_specifications["subject_ids"] = sorted(
-    list(dataset_specifications["subject_ids"])
+    dataset_specifications["subject_ids"]
 )
 dataset_specifications["visit_ages"] = list(
     dataset_specifications["visit_ages"].values()

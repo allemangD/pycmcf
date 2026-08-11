@@ -283,8 +283,7 @@ class DeterministicAtlas(AbstractStatisticalModel):
                     nv = 0.01 * residuals[k] / float(self.number_of_subjects)
                     self.objects_noise_variance[k] = nv
                     logger.info(
-                        ">> Automatically chosen noise std: %.4f [ %s ]"
-                        % (math.sqrt(nv), obj)
+                        f">> Automatically chosen noise std: {math.sqrt(nv):.4f} [ {obj} ]"
                     )
 
     ####################################################################################################################
@@ -330,7 +329,7 @@ class DeterministicAtlas(AbstractStatisticalModel):
         if not self.freeze_template:
             template_data = {
                 key: fixed_effects[key]
-                for key in self.fixed_effects["template_data"].keys()
+                for key in self.fixed_effects["template_data"]
             }
             self.set_template_data(template_data)
         if not self.freeze_control_points:
@@ -435,7 +434,7 @@ class DeterministicAtlas(AbstractStatisticalModel):
                 return attachment, regularity
 
         else:
-            device, device_id = utilities.get_best_device(gpu_mode=self.gpu_mode)
+            device, _device_id = utilities.get_best_device(gpu_mode=self.gpu_mode)
             template_data, template_points, control_points, momenta = (
                 self._fixed_effects_to_torch_tensors(with_grad, device=device)
             )
@@ -514,7 +513,7 @@ class DeterministicAtlas(AbstractStatisticalModel):
 
             gradient = {}
             if not freeze_template:
-                if "landmark_points" in template_data.keys():
+                if "landmark_points" in template_data:
                     assert template_points["landmark_points"].grad is not None, (
                         "Gradients have not been computed"
                     )
@@ -535,7 +534,7 @@ class DeterministicAtlas(AbstractStatisticalModel):
                             .cpu()
                             .numpy()
                         )
-                if "image_intensities" in template_data.keys():
+                if "image_intensities" in template_data:
                     assert template_data["image_intensities"].grad is not None, (
                         "Gradients have not been computed"
                     )
@@ -659,8 +658,8 @@ class DeterministicAtlas(AbstractStatisticalModel):
 
         # Control points.
         if self.dense_mode:
-            assert ("landmark_points" in self.template.get_points().keys()) and (
-                "image_points" not in self.template.get_points().keys()
+            assert ("landmark_points" in self.template.get_points()) and (
+                "image_points" not in self.template.get_points()
             ), (
                 "In dense mode, only landmark objects are allowed. One at least is needed."
             )

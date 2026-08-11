@@ -305,7 +305,7 @@ class BayesianAtlas(AbstractStatisticalModel):
         if not self.freeze_template:
             template_data = {
                 key: fixed_effects[key]
-                for key in self.fixed_effects["template_data"].keys()
+                for key in self.fixed_effects["template_data"]
             }
             self.set_template_data(template_data)
         if not self.freeze_control_points:
@@ -377,7 +377,7 @@ class BayesianAtlas(AbstractStatisticalModel):
 
             gradient = {}
             if not self.freeze_template:
-                if "landmark_points" in template_data.keys():
+                if "landmark_points" in template_data:
                     if self.use_sobolev_gradient:
                         gradient["landmark_points"] = (
                             self.sobolev_kernel.convolve(
@@ -395,7 +395,7 @@ class BayesianAtlas(AbstractStatisticalModel):
                             .cpu()
                             .numpy()
                         )
-                if "image_intensities" in template_data.keys():
+                if "image_intensities" in template_data:
                     gradient["image_intensities"] = (
                         template_data["image_intensities"].grad.detach().cpu().numpy()
                     )
@@ -502,7 +502,7 @@ class BayesianAtlas(AbstractStatisticalModel):
             t_list,
             t_name,
             t_name_extension,
-            t_noise_variance,
+            _t_noise_variance,
             t_multi_object_attachment,
         ) = create_template_metadata(template_specifications, gpu_mode=self.gpu_mode)
 
@@ -667,8 +667,8 @@ class BayesianAtlas(AbstractStatisticalModel):
 
         # Control points.
         if self.dense_mode:
-            assert ("landmark_points" in self.template.get_points().keys()) and (
-                "image_points" not in self.template.get_points().keys()
+            assert ("landmark_points" in self.template.get_points()) and (
+                "image_points" not in self.template.get_points()
             ), (
                 "In dense mode, only landmark objects are allowed. One at least is needed."
             )

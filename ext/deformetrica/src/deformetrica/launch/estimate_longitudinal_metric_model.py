@@ -398,8 +398,7 @@ def instantiate_longitudinal_metric_model(
             nv = total_residual / dof
             model.set_noise_variance(nv)
             logger.info(
-                ">> Initial noise variance set to %.2f based on the initial mean residual value."
-                % nv
+                f">> Initial noise variance set to {nv:.2f} based on the initial mean residual value."
             )
 
         if not model.is_frozen["noise_variance"]:

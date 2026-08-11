@@ -139,8 +139,7 @@ def estimate_longitudinal_registration_for_subject(
 
     except RuntimeError as error:
         logger.info(
-            ">> Failure of the longitudinal registration procedure for subject %s: %s"
-            % (full_subject_ids[i], error)
+            f">> Failure of the longitudinal registration procedure for subject {full_subject_ids[i]}: {error}"
         )
 
         if not (

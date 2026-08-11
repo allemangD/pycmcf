@@ -62,7 +62,7 @@ def setup_conda_env():
     cmd = (
         "hostname && "
         "if [ -f ~/.profile ]; then . ~/.profile; fi &&"
-        "conda env create -f %s" % path_to_environment_file
+        f"conda env create -f {path_to_environment_file}"
     )
     os.system(cmd)
 

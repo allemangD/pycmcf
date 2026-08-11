@@ -27,7 +27,7 @@ class ScipyOptimize(AbstractEstimator):
         statistical_model,
         dataset,
         optimization_method_type="undefined",
-        individual_RER={},
+        individual_RER=None,
         optimized_log_likelihood=default.optimized_log_likelihood,
         max_iterations=default.max_iterations,
         convergence_tolerance=default.convergence_tolerance,
@@ -44,6 +44,8 @@ class ScipyOptimize(AbstractEstimator):
         **kwargs,
     ):
 
+        if individual_RER is None:
+            individual_RER = {}
         super().__init__(
             statistical_model=statistical_model,
             dataset=dataset,
@@ -88,7 +90,7 @@ class ScipyOptimize(AbstractEstimator):
             self.parameters_shape = {
                 key: value.shape for key, value in parameters.items()
             }
-            self.parameters_order = [key for key in parameters.keys()]
+            self.parameters_order = [key for key in parameters]
             self.x0 = self._vectorize_parameters(parameters)
             self._gradient_memory = None
 
@@ -214,12 +216,7 @@ class ScipyOptimize(AbstractEstimator):
                     with_grad=False,
                 )
                 logger.info(
-                    ">> Log-likelihood = %.3E \t [ attachment = %.3E ; regularity = %.3E ]"
-                    % (
-                        Decimal(str(attachment + regularity)),
-                        Decimal(str(attachment)),
-                        Decimal(str(regularity)),
-                    )
+                    f">> Log-likelihood = {Decimal(str(attachment + regularity)):.3E} \t [ attachment = {Decimal(str(attachment)):.3E} ; regularity = {Decimal(str(regularity)):.3E} ]"
                 )
             except ValueError as error:
                 logger.info(">> " + str(error) + " [ in scipy_optimize ]")
@@ -293,12 +290,7 @@ class ScipyOptimize(AbstractEstimator):
         # Print.
         if self.verbose > 0 and not self.current_iteration % self.print_every_n_iters:
             logger.info(
-                ">> Log-likelihood = %.3E \t [ attachment = %.3E ; regularity = %.3E ]"
-                % (
-                    Decimal(str(attachment + regularity)),
-                    Decimal(str(attachment)),
-                    Decimal(str(regularity)),
-                )
+                f">> Log-likelihood = {Decimal(str(attachment + regularity)):.3E} \t [ attachment = {Decimal(str(attachment)):.3E} ; regularity = {Decimal(str(regularity)):.3E} ]"
             )
 
         # Call user callback function
@@ -393,15 +385,15 @@ class ScipyOptimize(AbstractEstimator):
         """
         fixed_effects = {
             key: parameters[key]
-            for key in self.statistical_model.get_fixed_effects().keys()
+            for key in self.statistical_model.get_fixed_effects()
         }
         self.statistical_model.set_fixed_effects(fixed_effects)
         if self.optimized_log_likelihood == "complete":
             self.population_RER = {
-                key: parameters[key] for key in self.population_RER.keys()
+                key: parameters[key] for key in self.population_RER
             }
             self.individual_RER = {
-                key: parameters[key] for key in self.individual_RER.keys()
+                key: parameters[key] for key in self.individual_RER
             }
 
     ####################################################################################################################

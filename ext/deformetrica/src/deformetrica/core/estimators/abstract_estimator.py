@@ -28,13 +28,17 @@ class AbstractEstimator(ABC):
         convergence_tolerance=default.convergence_tolerance,
         print_every_n_iters=default.print_every_n_iters,
         save_every_n_iters=default.save_every_n_iters,
-        population_RER={},
-        individual_RER={},
+        population_RER=None,
+        individual_RER=None,
         callback=None,
         state_file=None,
         output_dir=default.output_dir,
     ):
 
+        if individual_RER is None:
+            individual_RER = {}
+        if population_RER is None:
+            population_RER = {}
         self.statistical_model = statistical_model
         self.dataset = dataset
         self.name = name

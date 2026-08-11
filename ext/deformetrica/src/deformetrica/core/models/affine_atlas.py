@@ -78,7 +78,7 @@ class AffineAtlas(AbstractStatisticalModel):
 
         if (
             dataset is not None
-            and "landmark_points" in self.template.get_points().keys()
+            and "landmark_points" in self.template.get_points()
             and not self.is_frozen["translation_vectors"]
         ):
             translations = np.zeros((dataset.number_of_subjects, self.dimension))

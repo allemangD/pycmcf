@@ -73,12 +73,12 @@ def read_3D_list(path):
         output_list = []
         subject_list = []
         for line in f:
-            if not line == "\n":
+            if line != "\n":
                 subject_list.append([float(x) for x in line.split()])
             else:
                 output_list.append(subject_list)
                 subject_list = []
-        if not line == "\n":
+        if line != "\n":
             output_list.append(subject_list)
         return output_list
 

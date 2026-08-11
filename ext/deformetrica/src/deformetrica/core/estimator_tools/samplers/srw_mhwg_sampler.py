@@ -50,7 +50,7 @@ class SrwMhwgSampler:
 
         # Acceptance rate metrics initialization.
         acceptance_rates = {
-            key: 0.0 for key in self.individual_proposal_distributions.keys()
+            key: 0.0 for key in self.individual_proposal_distributions
         }
 
         # Main loop ----------------------------------------------------------------------------------------------------
@@ -174,7 +174,7 @@ class SrwMhwgSampler:
         ) in self.individual_proposal_distributions.items():
             ar = current_acceptance_rates_in_window[random_effect_name]
             std = proposal_distribution.get_variance_sqrt()
-            msg += "\t\t %.3f " % std
+            msg += f"\t\t {std:.3f} "
 
             if ar > self.acceptance_rates_target:
                 std *= 1 + (ar - goal) / (
@@ -183,7 +183,7 @@ class SrwMhwgSampler:
             else:
                 std *= 1 - (goal - ar) / (goal * math.sqrt(iteration_number + 1))
 
-            msg += "\tto\t%.3f \t[ %s ]\n" % (std, random_effect_name)
+            msg += f"\tto\t{std:.3f} \t[ {random_effect_name} ]\n"
             proposal_distribution.set_variance_sqrt(std)
 
         if verbose > 0:

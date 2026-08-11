@@ -93,7 +93,7 @@ def run_model_on_MNIST(latent_space_dimension):
     train_images_data_torch = torch.from_numpy(train_images_data).type(
         Settings().tensor_scalar_type
     )
-    test_images_data_torch = torch.from_numpy(test_images_data).type(
+    torch.from_numpy(test_images_data).type(
         Settings().tensor_scalar_type
     )
 
@@ -265,7 +265,7 @@ def run_on_cylinder():
 
     noise_variance = train_loss / (28 * 28)
 
-    model = instantiate_and_estimate_model(
+    instantiate_and_estimate_model(
         train_dataset,
         latent_space_dimension,
         latent_space_positions,

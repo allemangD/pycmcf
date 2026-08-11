@@ -396,9 +396,8 @@ class ExponentialInterface:
                 )
             elif abs(renormalization_factor.cpu().data.numpy()[0] - 1.0) > 0.02:
                 msg = (
-                    "Watch out, a large renormalization factor %.4f is required during the parallel transport, "
+                    f"Watch out, a large renormalization factor {renormalization_factor.cpu().data.numpy()[0]:.4f} is required during the parallel transport, "
                     "please use a finer discretization."
-                    % renormalization_factor.cpu().data.numpy()[0]
                 )
                 warnings.warn(msg)
 

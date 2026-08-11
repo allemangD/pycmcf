@@ -119,7 +119,7 @@ class Image:
         )
 
         if self.dimension == 2:
-            if not self.downsampling_factor == 1:
+            if self.downsampling_factor != 1:
                 shape = deformed_points.shape
                 deformed_voxels = (
                     torch.nn.functional.interpolate(
@@ -171,7 +171,7 @@ class Image:
             ).view(image_shape)
 
         elif self.dimension == 3:
-            if not self.downsampling_factor == 1:
+            if self.downsampling_factor != 1:
                 shape = deformed_points.shape
                 deformed_voxels = (
                     torch.nn.functional.interpolate(
@@ -322,7 +322,7 @@ class Image:
             np.save(os.path.join(output_dir, name), intensities_rescaled)
         else:
             raise ValueError(
-                'Writing images with the given extension "%s" is not coded yet.' % name
+                f'Writing images with the given extension "{name}" is not coded yet.'
             )
 
     ####################################################################################################################

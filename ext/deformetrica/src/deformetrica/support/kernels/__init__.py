@@ -14,7 +14,7 @@ class Type(Enum):
     KEOPS = KeopsKernel
 
 
-instance_map = dict()
+instance_map = {}
 
 
 def factory(kernel_type, gpu_mode=None, *args, **kwargs):

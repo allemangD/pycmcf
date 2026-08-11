@@ -215,7 +215,6 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
 
         # if False:
 
-        foo_output_dir = output_dir
         output_dir_tangent_pca = os.path.join(output_dir, "initialization")
 
         from ...api import Deformetrica
@@ -292,7 +291,7 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
         pca = PCA(n_components=n_components)
         latent_positions = pca.fit_transform(observations)
 
-        reconstructions = np.matmul(latent_positions, pca.components_)
+        np.matmul(latent_positions, pca.components_)
         # logger.info('>> Reconstruction error on momenta with pca: %.2f' %
         #             100.0 * np.linalg.norm(reconstructions - observations) / np.linalg.norm(observations))
         logger.info(
@@ -378,7 +377,7 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
         if not self.is_frozen["template_data"]:
             template_data = {
                 key: fixed_effects[key]
-                for key in self.fixed_effects["template_data"].keys()
+                for key in self.fixed_effects["template_data"]
             }
             self.set_template_data(template_data)
         if not self.is_frozen["control_points"]:
@@ -481,7 +480,7 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
 
             gradient = {}
             if not self.is_frozen["template_data"]:
-                if "landmark_points" in template_data.keys():
+                if "landmark_points" in template_data:
                     if self.use_sobolev_gradient:
                         gradient["landmark_points"] = (
                             self.sobolev_kernel.convolve(
@@ -499,7 +498,7 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
                             .cpu()
                             .numpy()
                         )
-                if "image_intensities" in template_data.keys():
+                if "image_intensities" in template_data:
                     gradient["image_intensities"] = (
                         template_data["image_intensities"].grad.detach().cpu().numpy()
                     )
@@ -780,8 +779,8 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
 
         # Control points.
         if self.dense_mode:
-            assert ("landmark_points" in self.template.get_points().keys()) and (
-                "image_points" not in self.template.get_points().keys()
+            assert ("landmark_points" in self.template.get_points()) and (
+                "image_points" not in self.template.get_points()
             ), (
                 "In dense mode, only landmark objects are allowed. One at least is needed."
             )

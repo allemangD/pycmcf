@@ -55,7 +55,7 @@ def compute_exponential_and_attachment(args):
     # start = time.perf_counter()
 
     # Read arguments.
-    (template, multi_object_attachment, tensor_scalar_type, gpu_mode, exponential) = (
+    (template, multi_object_attachment, _tensor_scalar_type, gpu_mode, exponential) = (
         process_initial_data
     )
     # (i, j, exponential, template_data, target, with_grad) = args
@@ -421,8 +421,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
         else:
             acceleration_std = 1.5
             logger.info(
-                ">> The initial acceleration std fixed effect is ARBITRARILY set to %.1f."
-                % acceleration_std
+                f">> The initial acceleration std fixed effect is ARBITRARILY set to {acceleration_std:.1f}."
             )
             self.set_acceleration_variance(acceleration_std**2)
         self.__initialize_acceleration_variance_prior()
@@ -570,8 +569,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                     # Arbitrary value.
                     std = 0.5
                     logger.info(
-                        "Template image intensities prior std parameter is ARBITRARILY set to %.3f."
-                        % std
+                        f"Template image intensities prior std parameter is ARBITRARILY set to {std:.3f}."
                     )
                     self.priors["template_data"][key].set_variance_sqrt(std)
 
@@ -607,8 +605,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                 1.0 / np.linalg.norm(rkhs_matrix)
             )  # Frobenius norm.
             logger.info(
-                ">> Momenta prior std set to %.3E."
-                % self.priors["momenta"].get_variance_sqrt()
+                ">> Momenta prior std set to {:.3E}.".format(self.priors["momenta"].get_variance_sqrt())
             )
 
     def __initialize_modulation_matrix_prior(self):
@@ -770,7 +767,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
         if not self.is_frozen["template_data"]:
             template_data = {
                 key: fixed_effects[key]
-                for key in self.fixed_effects["template_data"].keys()
+                for key in self.fixed_effects["template_data"]
             }
             self.set_template_data(template_data)
         if not self.is_frozen["control_points"]:
@@ -938,11 +935,11 @@ class LongitudinalAtlas(AbstractStatisticalModel):
 
             # Template data.
             if not self.is_frozen["template_data"]:
-                if "landmark_points" in template_data.keys():
+                if "landmark_points" in template_data:
                     gradient["landmark_points"] = template_points[
                         "landmark_points"
                     ].grad
-                if "image_intensities" in template_data.keys():
+                if "image_intensities" in template_data:
                     gradient["image_intensities"] = template_data[
                         "image_intensities"
                     ].grad
@@ -1477,7 +1474,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                 self.spatiotemporal_reference_frame.set_tmax(tmax, optimize=True)
                 self.spatiotemporal_reference_frame.update()
 
-            elif not modified_individual_RER == "sources":
+            elif modified_individual_RER != "sources":
                 raise RuntimeError(
                     'Unexpected modified_individual_RER: "'
                     + str(modified_individual_RER)
@@ -1587,7 +1584,6 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                     )
                 )
 
-                current_block_size = 0
                 tmp_ij = []
                 tmp_initial_template_points = []
                 tmp_initial_control_points = []
@@ -1648,7 +1644,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                 #     grad_checkpoint_tensors += list(grad_template_points.values()) + [grad_control_points, grad_momenta]
         else:
             # logger.info('Perform sequential computations.')
-            device, device_id = utilities.get_best_device(self.gpu_mode)
+            device, _device_id = utilities.get_best_device(self.gpu_mode)
             start = time.perf_counter()
 
             # self.template = utilities.convert_deformable_object_to_torch(self.template, device=device)
@@ -1692,9 +1688,8 @@ class LongitudinalAtlas(AbstractStatisticalModel):
             and np.max(accelerations.data.cpu().numpy()) - 1.0 > 10.0 * acceleration_std
         ):
             raise ValueError(
-                "Absurd numerical value for the acceleration factor: %.2f. Exception raised."
-                "For reference, the acceleration std is %.2f."
-                % (np.max(accelerations.data.cpu().numpy()), acceleration_std)
+                f"Absurd numerical value for the acceleration factor: {np.max(accelerations.data.cpu().numpy()):.2f}. Exception raised."
+                f"For reference, the acceleration std is {acceleration_std:.2f}."
             )
 
         reference_time = self.get_reference_time()
@@ -1772,8 +1767,8 @@ class LongitudinalAtlas(AbstractStatisticalModel):
 
         # Control points.
         if self.dense_mode:
-            assert ("landmark_points" in self.template.get_points().keys()) and (
-                "image_points" not in self.template.get_points().keys()
+            assert ("landmark_points" in self.template.get_points()) and (
+                "image_points" not in self.template.get_points()
             ), (
                 "In dense mode, only landmark objects are allowed. One at least is needed."
             )
@@ -1854,7 +1849,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
         ):
             self._augment_discretization()
         else:
-            raise RuntimeError('Unknown response to the error: "%s"' % error)
+            raise RuntimeError(f'Unknown response to the error: "{error}"')
 
     def _augment_discretization(self):
         current_concentration = (
@@ -1882,38 +1877,34 @@ class LongitudinalAtlas(AbstractStatisticalModel):
         msg = "\t\t noise_std        ="
         noise_variance = self.get_noise_variance()
         for k, object_name in enumerate(self.objects_name):
-            msg += "\t%.4f\t[ %s ]\t ; " % (math.sqrt(noise_variance[k]), object_name)
+            msg += f"\t{math.sqrt(noise_variance[k]):.4f}\t[ {object_name} ]\t ; "
         logger.info(msg[:-4])
 
         # Reference time, time-shift std, acceleration std.
-        logger.info("\t\t reference_time   =\t%.3f" % self.get_reference_time())
+        logger.info(f"\t\t reference_time   =\t{self.get_reference_time():.3f}")
         logger.info(
-            "\t\t time_shift_std   =\t%.3f" % math.sqrt(self.get_time_shift_variance())
+            f"\t\t time_shift_std   =\t{math.sqrt(self.get_time_shift_variance()):.3f}"
         )
         logger.info(
-            "\t\t acceleration_std =\t%.3f"
-            % math.sqrt(self.get_acceleration_variance())
+            f"\t\t acceleration_std =\t{math.sqrt(self.get_acceleration_variance()):.3f}"
         )
 
         # Empirical distributions of the individual parameters.
         logger.info(">> Random effect empirical distributions:")
         logger.info(
-            "\t\t onset_ages       =\t%.3f\t[ mean ]\t+/-\t%.4f\t[std]"
-            % (
+            "\t\t onset_ages       =\t{:.3f}\t[ mean ]\t+/-\t{:.4f}\t[std]".format(
                 np.mean(individual_RER["onset_age"]),
                 np.std(individual_RER["onset_age"]),
             )
         )
         logger.info(
-            "\t\t accelerations    =\t%.4f\t[ mean ]\t+/-\t%.4f\t[std]"
-            % (
+            "\t\t accelerations    =\t{:.4f}\t[ mean ]\t+/-\t{:.4f}\t[std]".format(
                 np.mean(individual_RER["acceleration"]),
                 np.std(individual_RER["acceleration"]),
             )
         )
         logger.info(
-            "\t\t sources          =\t%.4f\t[ mean ]\t+/-\t%.4f\t[std]"
-            % (np.mean(individual_RER["sources"]), np.std(individual_RER["sources"]))
+            "\t\t sources          =\t{:.4f}\t[ mean ]\t+/-\t{:.4f}\t[std]".format(np.mean(individual_RER["sources"]), np.std(individual_RER["sources"]))
         )
 
         # Spatiotemporal reference frame length.
@@ -2039,7 +2030,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                         + subject_id
                         + "__tp_"
                         + str(j)
-                        + ("__age_%.2f" % time)
+                        + (f"__age_{time:.2f}")
                         + object_extension
                     )
                     names.append(name)
@@ -2070,7 +2061,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                     self.spatiotemporal_reference_frame.geodesic.backward_exponential.number_of_time_points
                     - 1
                 )
-                + ("__age_%.2f" % self.get_reference_time())
+                + (f"__age_{self.get_reference_time():.2f}")
                 + self.objects_name_extension[k]
             )
             template_names.append(aux)
@@ -2138,5 +2129,5 @@ class LongitudinalAtlas(AbstractStatisticalModel):
     def _clean_output_directory(self, output_dir):
         files_to_delete = glob.glob(output_dir + "/*")
         for file in files_to_delete:
-            if not os.path.isdir(file) and (len(file) > 1 and not file[-2:] == ".p"):
+            if not os.path.isdir(file) and (len(file) > 1 and file[-2:] != ".p"):
                 os.remove(file)

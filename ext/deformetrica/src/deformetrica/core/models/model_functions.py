@@ -37,8 +37,8 @@ def initialize_control_points(
             #                                                    deformation_kernel_width)
             logger.info(">> Set of %d control points defined." % len(control_points))
         else:
-            assert ("landmark_points" in template.get_points().keys()) and (
-                "image_points" not in template.get_points().keys()
+            assert ("landmark_points" in template.get_points()) and (
+                "image_points" not in template.get_points()
             ), (
                 "In dense mode, only landmark objects are allowed. One at least is needed."
             )
@@ -56,7 +56,7 @@ def initialize_momenta(
 ):
     if initial_momenta is not None:
         momenta = read_3D_array(initial_momenta)
-        logger.info(">> Reading initial momenta from file: %s." % initial_momenta)
+        logger.info(f">> Reading initial momenta from file: {initial_momenta}.")
 
     else:
         if number_of_subjects == 0:
@@ -129,8 +129,7 @@ def initialize_onset_ages(initial_onset_ages, number_of_subjects, reference_time
     else:
         onset_ages = np.zeros((number_of_subjects,)) + reference_time
         logger.info(
-            ">> Initializing all onset ages to the initial reference time: %.2f"
-            % reference_time
+            f">> Initializing all onset ages to the initial reference time: {reference_time:.2f}"
         )
     return onset_ages
 

@@ -160,8 +160,7 @@ class GeodesicRegression(AbstractStatisticalModel):
                     nv = 0.01 * residuals[k] / float(len(target_times))
                     self.objects_noise_variance[k] = nv
                     logger.info(
-                        ">> Automatically chosen noise std: %.4f [ %s ]"
-                        % (math.sqrt(nv), obj)
+                        f">> Automatically chosen noise std: {math.sqrt(nv):.4f} [ {obj} ]"
                     )
 
     ####################################################################################################################
@@ -206,7 +205,7 @@ class GeodesicRegression(AbstractStatisticalModel):
         if not self.freeze_template:
             template_data = {
                 key: fixed_effects[key]
-                for key in self.fixed_effects["template_data"].keys()
+                for key in self.fixed_effects["template_data"]
             }
             self.set_template_data(template_data)
         if not self.freeze_control_points:
@@ -233,7 +232,7 @@ class GeodesicRegression(AbstractStatisticalModel):
         :return:
         """
 
-        device, device_id = utilities.get_best_device(gpu_mode=self.gpu_mode)
+        device, _device_id = utilities.get_best_device(gpu_mode=self.gpu_mode)
 
         # Initialize: conversion from numpy to torch -------------------------------------------------------------------
         template_data, template_points, control_points, momenta = (
@@ -253,11 +252,11 @@ class GeodesicRegression(AbstractStatisticalModel):
             gradient = {}
             # Template data.
             if not self.freeze_template:
-                if "landmark_points" in template_data.keys():
+                if "landmark_points" in template_data:
                     gradient["landmark_points"] = template_points[
                         "landmark_points"
                     ].grad
-                if "image_intensities" in template_data.keys():
+                if "image_intensities" in template_data:
                     gradient["image_intensities"] = template_data[
                         "image_intensities"
                     ].grad
@@ -375,8 +374,8 @@ class GeodesicRegression(AbstractStatisticalModel):
 
         # Control points.
         if self.dense_mode:
-            assert ("landmark_points" in self.template.get_points().keys()) and (
-                "image_points" not in self.template.get_points().keys()
+            assert ("landmark_points" in self.template.get_points()) and (
+                "image_points" not in self.template.get_points()
             ), (
                 "In dense mode, only landmark objects are allowed. One at least is needed."
             )
@@ -459,7 +458,7 @@ class GeodesicRegression(AbstractStatisticalModel):
                         + object_name
                         + "__tp_"
                         + str(j)
-                        + ("__age_%.2f" % time)
+                        + (f"__age_{time:.2f}")
                         + object_extension
                     )
                     names.append(name)
@@ -486,7 +485,7 @@ class GeodesicRegression(AbstractStatisticalModel):
                 + self.objects_name[k]
                 + "__tp_"
                 + str(self.geodesic.backward_exponential.number_of_time_points - 1)
-                + ("__age_%.2f" % self.geodesic.t0)
+                + (f"__age_{self.geodesic.t0:.2f}")
                 + self.objects_name_extension[k]
             )
             template_names.append(aux)

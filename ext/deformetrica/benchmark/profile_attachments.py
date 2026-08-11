@@ -257,8 +257,8 @@ if __name__ == "__main__":
 
     # Optionally make a plot.
     if len(sys.argv) > 1:
-        if not sys.argv[1] == "--plot":
-            msg = 'Unknown command-line option: "%s". Ignoring.' % sys.argv[1]
+        if sys.argv[1] != "--plot":
+            msg = f'Unknown command-line option: "{sys.argv[1]}". Ignoring.'
             warnings.warn(msg)
         else:
             fig, ax = plt.subplots()

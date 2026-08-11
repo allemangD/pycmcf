@@ -505,7 +505,7 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
                         )
 
             else:
-                reference_time = self.get_reference_time()
+                self.get_reference_time()
                 latent_coordinates_i = Variable(
                     torch.zeros(len(predicted_values_i), self.latent_space_dimension)
                 ).type(Settings().tensor_scalar_type)
@@ -748,7 +748,7 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
             ) / (number_of_subjects + onset_age_prior_scale)
             self.set_onset_age_variance(onset_age_variance)
 
-        if "S5" in sufficient_statistics.keys():
+        if "S5" in sufficient_statistics:
             v0 = self.get_v0()
             self.set_v0(v0 * sufficient_statistics["S5"])
 
@@ -990,7 +990,7 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
 
         elif self.observation_type == "image":
             if Settings().dimension == 2:
-                a, b = self.template.get_intensities().shape
+                a, _b = self.template.get_intensities().shape
                 if a == 64:
                     logger.info("Defaulting Image net output dimension to 64 x 64")
                     self.net = ImageNet2d(in_dimension=self.latent_space_dimension)
@@ -1418,20 +1418,18 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
         # Noise variance.
         msg = "\t\t noise_variance    ="
         noise_variance = self.get_noise_variance()
-        msg += "\t%.4f\t ; " % (math.sqrt(noise_variance))
+        msg += f"\t{math.sqrt(noise_variance):.4f}\t ; "
         logger.info(msg[:-4])
 
         # Empirical distributions of the individual parameters.
         logger.info(
-            "\t\t onset_ages        =\t%.3f\t[ mean ]\t+/-\t%.4f\t[std]"
-            % (
+            "\t\t onset_ages        =\t{:.3f}\t[ mean ]\t+/-\t{:.4f}\t[std]".format(
                 np.mean(individual_RER["onset_age"]),
                 np.std(individual_RER["onset_age"]),
             )
         )
         logger.info(
-            "\t\t log_accelerations =\t%.4f\t[ mean ]\t+/-\t%.4f\t[std]"
-            % (
+            "\t\t log_accelerations =\t{:.4f}\t[ mean ]\t+/-\t{:.4f}\t[std]".format(
                 np.mean(individual_RER["log_acceleration"]),
                 np.std(individual_RER["log_acceleration"]),
             )
@@ -1464,11 +1462,13 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
         self,
         times,
         trajectory,
-        names=["memory", "language", "praxis", "concentration"],
+        names=None,
         linestyles=None,
         linewidth=1.0,
     ):
         # names = ['MDS','SBR'] # for ppmi
+        if names is None:
+            names = ["memory", "language", "praxis", "concentration"]
         colors = ["b", "g", "r", "c"]
         for d in range(len(trajectory[0])):
             if d >= len(names):

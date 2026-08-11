@@ -53,8 +53,8 @@ def compute_shooting(
         object_list,
         t_name,
         t_name_extension,
-        t_noise_variance,
-        multi_object_attachment,
+        _t_noise_variance,
+        _multi_object_attachment,
     ) = create_template_metadata(template_specifications, dimension, gpu_mode=gpu_mode)
 
     template = DeformableMultiObject(object_list)

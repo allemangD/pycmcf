@@ -61,7 +61,7 @@ class DeformableMultiObject:
         return data
 
     def set_data(self, data):
-        if "landmark_points" in data.keys():
+        if "landmark_points" in data:
             landmark_object_list = [
                 elt
                 for elt in self.object_list
@@ -78,7 +78,7 @@ class DeformableMultiObject:
                 )
                 pos += elt.get_number_of_points()
 
-        if "image_intensities" in data.keys():
+        if "image_intensities" in data:
             image_object_list = [
                 elt for elt in self.object_list if elt.type.lower() == "image"
             ]
@@ -118,13 +118,13 @@ class DeformableMultiObject:
 
         deformed_data = {}
 
-        if "landmark_points" in deformed_points.keys():
+        if "landmark_points" in deformed_points:
             # assert 'landmark_points' in template_data.keys(), 'That\'s unexpected.'       # TODO check this
             # template_data['landmark_points'] = deformed_points['landmark_points']  # For torch gradients to circulate.
             deformed_data["landmark_points"] = deformed_points["landmark_points"]
 
-        if "image_points" in deformed_points.keys():
-            assert "image_intensities" in template_data.keys(), "That's unexpected."
+        if "image_points" in deformed_points:
+            assert "image_intensities" in template_data, "That's unexpected."
             image_object_list = [
                 elt for elt in self.object_list if elt.type.lower() == "image"
             ]

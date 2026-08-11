@@ -113,7 +113,7 @@ class DeformableObjectReader:
 
             else:
                 raise TypeError(
-                    "Unknown image extension for file: %s" % object_filename
+                    f"Unknown image extension for file: {object_filename}"
                 )
 
             # Rescaling between 0. and 1.
@@ -138,7 +138,7 @@ class DeformableObjectReader:
         """
         Routine to read VTK files based on the VTK library (available from conda).
         """
-        assert os.path.isfile(filename), "File does not exist: %s" % filename
+        assert os.path.isfile(filename), f"File does not exist: {filename}"
 
         # choose vtk reader depending on file extension
         if filename.find(".vtk") > 0:

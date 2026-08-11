@@ -368,7 +368,6 @@ class DeepPga(AbstractStatisticalModel):
         """
         Updates the fixed effects based on the sufficient statistics, maximizing the likelihood.
         """
-        number_of_subjects = dataset.number_of_subjects
         total_number_of_observations = dataset.total_number_of_observations
 
         # Updating the noise variance
@@ -525,5 +524,5 @@ class DeepPga(AbstractStatisticalModel):
         # Noise variance.
         msg = "\t\t noise_variance    ="
         noise_variance = self.get_noise_variance()
-        msg += "\t%.4f\t ; " % (math.sqrt(noise_variance))
+        msg += f"\t{math.sqrt(noise_variance):.4f}\t ; "
         logger.info(msg[:-4])

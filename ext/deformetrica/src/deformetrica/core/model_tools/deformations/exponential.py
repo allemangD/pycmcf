@@ -181,11 +181,11 @@ class Exponential:
         if time_index is None:
             return {
                 key: self.template_points_t[key][-1]
-                for key in self.initial_template_points.keys()
+                for key in self.initial_template_points
             }
         return {
             key: self.template_points_t[key][time_index]
-            for key in self.initial_template_points.keys()
+            for key in self.initial_template_points
         }
 
     def get_norm_squared(self):
@@ -277,7 +277,7 @@ class Exponential:
 
         # Special case of the dense mode.
         if self.dense_mode:
-            assert "image_points" not in self.initial_template_points.keys(), (
+            assert "image_points" not in self.initial_template_points, (
                 "Dense mode not allowed with image data."
             )
             self.template_points_t["landmark_points"] = self.control_points_t
@@ -285,7 +285,7 @@ class Exponential:
             return
 
         # Flow landmarks points.
-        if "landmark_points" in self.initial_template_points.keys():
+        if "landmark_points" in self.initial_template_points:
             landmark_points = [self.initial_template_points["landmark_points"]]
 
             for i in range(self.number_of_time_points - 1):
@@ -324,7 +324,7 @@ class Exponential:
             self.template_points_t["landmark_points"] = landmark_points
 
         # Flow image points.
-        if "image_points" in self.initial_template_points.keys():
+        if "image_points" in self.initial_template_points:
             image_points = [self.initial_template_points["image_points"]]
 
             dimension = self.initial_control_points.size(1)
@@ -422,7 +422,7 @@ class Exponential:
             )
             assert abs(sp) < 1e-2, (
                 "Error: the momenta to transport is not orthogonal to the driving momenta, "
-                "but the is_orthogonal flag is active. sp = %.3E" % sp
+                f"but the is_orthogonal flag is active. sp = {sp:.3E}"
             )
             parallel_transport_t = [momenta_to_transport]
 
@@ -499,8 +499,8 @@ class Exponential:
 
             if abs(renormalization_factor.detach().cpu().numpy() - 1.0) > 0.1:
                 raise ValueError(
-                    "Absurd required renormalization factor during parallel transport: %.4f. "
-                    "Exception raised." % renormalization_factor.detach().cpu().numpy()
+                    f"Absurd required renormalization factor during parallel transport: {renormalization_factor.detach().cpu().numpy():.4f}. "
+                    "Exception raised."
                 )
             elif abs(renormalization_factor.detach().cpu().numpy() - 1.0) > abs(
                 worst_renormalization_factor - 1.0
@@ -525,8 +525,8 @@ class Exponential:
 
         if abs(worst_renormalization_factor - 1.0) > 0.05:
             msg = (
-                "Watch out, a large renormalization factor %.4f is required during the parallel transport. "
-                "Try using a finer discretization." % worst_renormalization_factor
+                f"Watch out, a large renormalization factor {worst_renormalization_factor:.4f} is required during the parallel transport. "
+                "Try using a finer discretization."
             )
             logger.warning(msg)
 
@@ -566,7 +566,7 @@ class Exponential:
         # Extended flow.
         # Special case of the dense mode.
         if self.dense_mode:
-            assert "image_points" not in self.initial_template_points.keys(), (
+            assert "image_points" not in self.initial_template_points, (
                 "Dense mode not allowed with image data."
             )
             self.template_points_t["landmark_points"] = self.control_points_t
@@ -574,7 +574,7 @@ class Exponential:
         # Standard case.
         else:
             # Flow landmark points.
-            if "landmark_points" in self.initial_template_points.keys():
+            if "landmark_points" in self.initial_template_points:
                 for ii in range(number_of_additional_time_points):
                     i = len(self.template_points_t["landmark_points"]) - 1
                     d_pos = self.kernel.convolve(
@@ -603,7 +603,7 @@ class Exponential:
                         )
 
             # Flow image points.
-            if "image_points" in self.initial_template_points.keys():
+            if "image_points" in self.initial_template_points:
                 dimension = self.initial_control_points.size(1)
                 image_shape = self.initial_template_points["image_points"].size()
 

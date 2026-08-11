@@ -298,7 +298,7 @@ def initialize_longitudinal_atlas(
     xml_parameters._read_optimization_parameters_xml(optimization_parameters_xml_path)
 
     global_deformetrica = Deformetrica(output_dir=preprocessings_folder)
-    template_specifications, model_options, estimator_options = (
+    _template_specifications, model_options, _estimator_options = (
         global_deformetrica.further_initialization(
             "LongitudinalAtlas",
             xml_parameters.template_specifications,
@@ -318,8 +318,6 @@ def initialize_longitudinal_atlas(
         xml_parameters.template_specifications
     )[1:3]
 
-    global_user_specified_optimization_method = xml_parameters.optimization_method_type
-    global_user_specified_number_of_processes = xml_parameters.number_of_processes
 
     global_dense_mode = xml_parameters.dense_mode
     global_deformation_kernel_type = xml_parameters.deformation_kernel_type
@@ -353,7 +351,7 @@ def initialize_longitudinal_atlas(
     global_number_of_time_points = xml_parameters.number_of_time_points
 
     global_tensor_scalar_type = model_options["tensor_scalar_type"]
-    global_tensor_integer_type = model_options["tensor_integer_type"]
+    model_options["tensor_integer_type"]
 
     """
     1]. Compute an atlas on the baseline data.
@@ -381,7 +379,7 @@ def initialize_longitudinal_atlas(
                 atlas_type + "Atlas__EstimatedParameters__Momenta.txt",
             )
         )
-        global_dimension = global_initial_control_points.shape[1]
+        global_initial_control_points.shape[1]
 
         global_initial_objects_template_list = []
         global_initial_objects_template_path = []
@@ -391,7 +389,7 @@ def initialize_longitudinal_atlas(
             extension = os.path.splitext(object_specs["filename"])[-1]
             filename = os.path.join(
                 global_path_to_data,
-                "ForInitialization__Template_%s__FromAtlas%s" % (object_id, extension),
+                f"ForInitialization__Template_{object_id}__FromAtlas{extension}",
             )
             object_type = object_specs["deformable_object_type"].lower()
             template_object = reader.create_object(filename, object_type)
@@ -464,7 +462,7 @@ def initialize_longitudinal_atlas(
 
         else:
             raise RuntimeError('Unknown atlas type: "' + atlas_type + '"')
-        global_dimension = model.fixed_effects["control_points"].shape[1]
+        model.fixed_effects["control_points"].shape[1]
 
         # Export the results -------------------------------------------------------------------------------------------
         (
@@ -651,13 +649,7 @@ def initialize_longitudinal_atlas(
             ):
                 object_specs["filename"] = os.path.join(
                     atlas_output_path,
-                    "%sAtlas__Reconstruction__%s__subject_%s%s"
-                    % (
-                        atlas_type,
-                        object_id,
-                        global_full_subject_ids[i],
-                        global_objects_name_extension[k],
-                    ),
+                    f"{atlas_type}Atlas__Reconstruction__{object_id}__subject_{global_full_subject_ids[i]}{global_objects_name_extension[k]}",
                 )
 
             # Find the control points and momenta that transforms the previously computed template into the individual.
@@ -675,7 +667,7 @@ def initialize_longitudinal_atlas(
             # Dump those control points, and use them for the regression.
             path_to_regression_control_points = os.path.join(
                 regression_tmp_path,
-                "regression_control_points__%s.txt" % global_full_subject_ids[i],
+                f"regression_control_points__{global_full_subject_ids[i]}.txt",
             )
             np.savetxt(path_to_regression_control_points, registration_control_points)
             xml_parameters.initial_control_points = path_to_regression_control_points
@@ -694,7 +686,7 @@ def initialize_longitudinal_atlas(
             )
 
             # Parallel transport of the estimated momenta.
-            transported_regression_control_points, transported_regression_momenta = (
+            _transported_regression_control_points, transported_regression_momenta = (
                 parallel_transport(
                     regression_control_points,
                     regression_momenta,
@@ -821,8 +813,7 @@ def initialize_longitudinal_atlas(
 
         if subject_regression_momenta_scalar_product_with_population_momenta <= 0.0:
             msg = (
-                "Subject %s seems to evolve against the population: scalar_product = %.3E."
-                % (
+                "Subject {} seems to evolve against the population: scalar_product = {:.3E}.".format(
                     global_full_subject_ids[i],
                     Decimal(
                         float(
@@ -908,20 +899,15 @@ def initialize_longitudinal_atlas(
     )
 
     logger.info(">> Estimated fixed effects:")
-    logger.info("\t\t time_shift_std    =\t%.3f" % heuristic_initial_time_shift_std)
-    logger.info("\t\t acceleration_std  =\t%.3f" % heuristic_initial_acceleration_std)
+    logger.info(f"\t\t time_shift_std    =\t{heuristic_initial_time_shift_std:.3f}")
+    logger.info(f"\t\t acceleration_std  =\t{heuristic_initial_acceleration_std:.3f}")
 
     logger.info(">> Estimated random effect statistics:")
     logger.info(
-        "\t\t onset_ages    =\t%.3f\t[ mean ]\t+/-\t%.4f\t[std]"
-        % (np.mean(heuristic_initial_onset_ages), heuristic_initial_time_shift_std)
+        f"\t\t onset_ages    =\t{np.mean(heuristic_initial_onset_ages):.3f}\t[ mean ]\t+/-\t{heuristic_initial_time_shift_std:.4f}\t[std]"
     )
     logger.info(
-        "\t\t accelerations =\t%.4f\t[ mean ]\t+/-\t%.4f\t[std]"
-        % (
-            np.mean(heuristic_initial_accelerations),
-            np.std(heuristic_initial_accelerations),
-        )
+        f"\t\t accelerations =\t{np.mean(heuristic_initial_accelerations):.4f}\t[ mean ]\t+/-\t{np.std(heuristic_initial_accelerations):.4f}\t[std]"
     )
 
     # Export the results -----------------------------------------------------------------------------------------------
@@ -952,13 +938,13 @@ def initialize_longitudinal_atlas(
         model_xml_level0 = insert_model_xml_level1_entry(
             model_xml_level0,
             "initial-time-shift-std",
-            "%.4f" % heuristic_initial_time_shift_std,
+            f"{heuristic_initial_time_shift_std:.4f}",
         )
     if heuristic_initial_acceleration_std > 0.0:
         model_xml_level0 = insert_model_xml_level1_entry(
             model_xml_level0,
             "initial-acceleration-std",
-            "%.4f" % heuristic_initial_acceleration_std,
+            f"{heuristic_initial_acceleration_std:.4f}",
         )
     model_xml_level0 = insert_model_xml_level1_entry(
         model_xml_level0, "initial-onset-ages", heuristic_initial_onset_ages_path
@@ -1087,7 +1073,7 @@ def initialize_longitudinal_atlas(
                 + object_name
                 + "__tp_"
                 + str(number_of_timepoints)
-                + ("__age_%.2f" % global_t0)
+                + (f"__age_{global_t0:.2f}")
                 + object_name_extension,
             )
             global_initial_objects_template_path[k] = os.path.join(
@@ -1115,7 +1101,7 @@ def initialize_longitudinal_atlas(
             shooting_output_path,
             "Shooting__GeodesicFlow__ControlPoints__tp_"
             + str(number_of_timepoints)
-            + ("__age_%.2f" % global_t0)
+            + (f"__age_{global_t0:.2f}")
             + ".txt",
         )
         global_initial_control_points_path = os.path.join(
@@ -1129,7 +1115,7 @@ def initialize_longitudinal_atlas(
             shooting_output_path,
             "Shooting__GeodesicFlow__Momenta__tp_"
             + str(number_of_timepoints)
-            + ("__age_%.2f" % global_t0)
+            + (f"__age_{global_t0:.2f}")
             + ".txt",
         )
         global_initial_momenta_path = os.path.join(
@@ -1320,8 +1306,7 @@ def initialize_longitudinal_atlas(
 
         logger.info(">> Estimated random effect statistics:")
         logger.info(
-            "\t\t sources =\t%.3f\t[ mean ]\t+/-\t%.4f\t[std]"
-            % (np.mean(global_initial_sources), np.std(global_initial_sources))
+            f"\t\t sources =\t{np.mean(global_initial_sources):.3f}\t[ mean ]\t+/-\t{np.std(global_initial_sources):.4f}\t[std]"
         )
 
     """
@@ -1422,21 +1407,18 @@ def initialize_longitudinal_atlas(
 
     logger.info("")
     logger.info(">> Estimated fixed effects:")
-    logger.info("\t\t time_shift_std    =\t%.3f" % global_time_shift_std)
-    logger.info("\t\t acceleration_std  =\t%.3f" % global_acceleration_std)
+    logger.info(f"\t\t time_shift_std    =\t{global_time_shift_std:.3f}")
+    logger.info(f"\t\t acceleration_std  =\t{global_acceleration_std:.3f}")
 
     logger.info(">> Estimated random effect statistics:")
     logger.info(
-        "\t\t onset_ages    =\t%.3f\t[ mean ]\t+/-\t%.4f\t[std]"
-        % (np.mean(global_onset_ages), global_time_shift_std)
+        f"\t\t onset_ages    =\t{np.mean(global_onset_ages):.3f}\t[ mean ]\t+/-\t{global_time_shift_std:.4f}\t[std]"
     )
     logger.info(
-        "\t\t accelerations =\t%.4f\t[ mean ]\t+/-\t%.4f\t[std]"
-        % (np.mean(global_accelerations), np.std(global_accelerations))
+        f"\t\t accelerations =\t{np.mean(global_accelerations):.4f}\t[ mean ]\t+/-\t{np.std(global_accelerations):.4f}\t[std]"
     )
     logger.info(
-        "\t\t sources       =\t%.4f\t[ mean ]\t+/-\t%.4f\t[std]"
-        % (np.mean(global_sources), np.std(global_sources))
+        f"\t\t sources       =\t{np.mean(global_sources):.4f}\t[ mean ]\t+/-\t{np.std(global_sources):.4f}\t[std]"
     )
 
     # Copy the output individual effects into the data folder.
@@ -1475,13 +1457,13 @@ def initialize_longitudinal_atlas(
     )
     if global_time_shift_std > 0:
         model_xml_level0 = insert_model_xml_level1_entry(
-            model_xml_level0, "initial-time-shift-std", "%.4f" % global_time_shift_std
+            model_xml_level0, "initial-time-shift-std", f"{global_time_shift_std:.4f}"
         )
     if global_acceleration_std > 0:
         model_xml_level0 = insert_model_xml_level1_entry(
             model_xml_level0,
             "initial-acceleration-std",
-            "%.4f" % global_acceleration_std,
+            f"{global_acceleration_std:.4f}",
         )
     model_xml_level0 = insert_model_xml_level1_entry(
         model_xml_level0, "initial-onset-ages", global_initial_onset_ages_path
@@ -1562,8 +1544,7 @@ def initialize_longitudinal_atlas(
         )
         global_initial_objects_template_path[k] = os.path.join(
             global_path_to_data,
-            "ForInitialization__Template_%s__FromLongitudinalAtlas%s"
-            % (object_name, object_name_extension),
+            f"ForInitialization__Template_{object_name}__FromLongitudinalAtlas{object_name_extension}",
         )
         shutil.copyfile(
             estimated_template_path, global_initial_objects_template_path[k]
@@ -1634,7 +1615,7 @@ def initialize_longitudinal_atlas(
     )
     global_initial_reference_time = np.loadtxt(estimated_reference_time_path)
     model_xml_level0 = insert_model_xml_deformation_parameters_entry(
-        model_xml_level0, "t0", "%.4f" % global_initial_reference_time
+        model_xml_level0, "t0", f"{global_initial_reference_time:.4f}"
     )
 
     # Time-shift variance.
@@ -1646,7 +1627,7 @@ def initialize_longitudinal_atlas(
     model_xml_level0 = insert_model_xml_level1_entry(
         model_xml_level0,
         "initial-time-shift-std",
-        "%.4f" % global_initial_time_shift_std,
+        f"{global_initial_time_shift_std:.4f}",
     )
 
     # Acceleration variance.
@@ -1658,7 +1639,7 @@ def initialize_longitudinal_atlas(
     model_xml_level0 = insert_model_xml_level1_entry(
         model_xml_level0,
         "initial-acceleration-std",
-        "%.4f" % global_initial_acceleration_std,
+        f"{global_initial_acceleration_std:.4f}",
     )
 
     # Noise variance.

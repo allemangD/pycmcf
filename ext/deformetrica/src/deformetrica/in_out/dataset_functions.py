@@ -36,7 +36,7 @@ def create_dataset(
             for j in range(len(dataset_filenames[i])):
                 object_list = []
                 reader = DeformableObjectReader()
-                for object_id in template_specifications.keys():
+                for object_id in template_specifications:
                     if object_id not in dataset_filenames[i][j]:
                         raise RuntimeError(
                             "The template object with id "
@@ -159,7 +159,7 @@ def read_and_create_image_dataset(
     for i in range(len(dataset_filenames)):
         deformable_objects_subject = []
         for j in range(len(dataset_filenames[i])):
-            for object_id in template_specifications.keys():
+            for object_id in template_specifications:
                 if object_id not in dataset_filenames[i][j]:
                     raise RuntimeError(
                         "The template object with id "
@@ -208,7 +208,7 @@ def split_filename(filename: str):
         if filename.endswith(extension):
             return filename[: -len(extension)], extension
 
-    raise RuntimeError("Unknown extension for file %s" % (filename,))
+    raise RuntimeError(f"Unknown extension for file {filename}")
 
 
 def create_template_metadata(template_specifications, dimension=None, gpu_mode=None):
@@ -237,7 +237,7 @@ def create_template_metadata(template_specifications, dimension=None, gpu_mode=N
             "Image".lower(),
         ], "Unknown object type."
 
-        root, extension = split_filename(filename)
+        _root, extension = split_filename(filename)
         reader = DeformableObjectReader()
 
         objects_list.append(
@@ -365,13 +365,12 @@ def _get_norm_for_object(object, object_id):
     elif object_type == "Image".lower():
         object_norm = "L2"
         if (
-            "attachment_type" in object.keys()
-            and not object["attachment_type"].lower() == "L2".lower()
+            "attachment_type" in object
+            and object["attachment_type"].lower() != "L2".lower()
         ):
             msg = (
                 'Only the "L2" attachment is available for image objects so far. '
-                'Overwriting the user-specified invalid attachment: "%s"'
-                % object["attachment_type"]
+                'Overwriting the user-specified invalid attachment: "{}"'.format(object["attachment_type"])
             )
             warnings.warn(msg)
 

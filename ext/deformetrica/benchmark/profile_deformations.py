@@ -133,7 +133,7 @@ class ProfileDeformations:
         self.exponential.set_initial_momenta(self.tensor_scalar_type(self.momenta))
         self.exponential.update()
         deformed_points = self.exponential.get_template_points()
-        deformed_data = self.template.get_deformed_data(
+        self.template.get_deformed_data(
             deformed_points,
             {
                 key: self.tensor_scalar_type(value)
@@ -163,7 +163,7 @@ class ProfileDeformations:
                 for key, value in self.template.get_data().items()
             },
         )
-        for key, value in deformed_data.items():
+        for value in deformed_data.values():
             value.backward(torch.ones(value.size()).type(self.tensor_scalar_type))
 
 
@@ -296,8 +296,8 @@ if __name__ == "__main__":
 
     # Optionally make a plot.
     if len(sys.argv) > 1:
-        if not sys.argv[1] == "--plot":
-            msg = 'Unknown command-line option: "%s". Ignoring.' % sys.argv[1]
+        if sys.argv[1] != "--plot":
+            msg = f'Unknown command-line option: "{sys.argv[1]}". Ignoring.'
             warnings.warn(msg)
         else:
             fig, ax = plt.subplots()

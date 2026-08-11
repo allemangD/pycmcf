@@ -84,34 +84,29 @@ class ParallelTransportTests(unittest.TestCase):
         )
 
         logger.info(
-            "1e-1: %s"
-            % np.allclose(
+            "1e-1: {}".format(np.allclose(
                 transported_momenta, transported_momenta_truth, rtol=1e-4, atol=1e-1
-            )
+            ))
         )
         logger.info(
-            "1e-2: %s"
-            % np.allclose(
+            "1e-2: {}".format(np.allclose(
                 transported_momenta, transported_momenta_truth, rtol=1e-4, atol=1e-2
-            )
+            ))
         )
         logger.info(
-            "1e-3: %s"
-            % np.allclose(
+            "1e-3: {}".format(np.allclose(
                 transported_momenta, transported_momenta_truth, rtol=1e-4, atol=1e-3
-            )
+            ))
         )
         logger.info(
-            "1e-4: %s"
-            % np.allclose(
+            "1e-4: {}".format(np.allclose(
                 transported_momenta, transported_momenta_truth, rtol=1e-4, atol=1e-4
-            )
+            ))
         )
         logger.info(
-            "1e-5: %s"
-            % np.allclose(
+            "1e-5: {}".format(np.allclose(
                 transported_momenta, transported_momenta_truth, rtol=1e-4, atol=1e-5
-            )
+            ))
         )
 
         self.assertTrue(

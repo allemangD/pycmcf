@@ -136,8 +136,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Estimates the best possible deformation between two sets of objects.
@@ -152,6 +152,10 @@ class Deformetrica:
         :return:
         """
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "Registration",
@@ -195,8 +199,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Estimate deterministic atlas.
@@ -212,6 +216,10 @@ class Deformetrica:
         """
 
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "DeterministicAtlas",
@@ -256,8 +264,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Estimate bayesian atlas.
@@ -271,6 +279,10 @@ class Deformetrica:
         :param bool write_output: Boolean that defines is output files will be written to disk.
         """
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "BayesianAtlas",
@@ -316,8 +328,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Estimate longitudinal atlas.
@@ -332,6 +344,10 @@ class Deformetrica:
         """
 
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "LongitudinalAtlas",
@@ -378,8 +394,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         overwrite=True,
     ):
         """Estimate longitudinal registration.
@@ -394,6 +410,10 @@ class Deformetrica:
         """
 
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "LongitudinalRegistration",
@@ -418,8 +438,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Estimate affine atlas
@@ -433,6 +453,10 @@ class Deformetrica:
         :param bool write_output: Boolean that defines is output files will be written to disk.
         """
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "AffineAtlas",
@@ -486,8 +510,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Construct a shape trajectory that is as close as possible to the given targets at the given times.
@@ -500,6 +524,10 @@ class Deformetrica:
         :param bool write_output: Boolean that defines is output files will be written to disk.
         """
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "Regression",
@@ -548,8 +576,8 @@ class Deformetrica:
         self,
         template_specifications,
         dataset_specifications,
-        model_options={},
-        estimator_options={},
+        model_options=None,
+        estimator_options=None,
         write_output=True,
     ):
         """Estimate principal geodesic analysis
@@ -562,6 +590,10 @@ class Deformetrica:
         :param bool write_output: Boolean that defines is output files will be written to disk.
         """
         # Check and completes the input parameters.
+        if estimator_options is None:
+            estimator_options = {}
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, estimator_options = (
             self.further_initialization(
                 "PrincipalGeodesicAnalysis",
@@ -613,7 +645,7 @@ class Deformetrica:
 
         return statistical_model
 
-    def compute_parallel_transport(self, template_specifications, model_options={}):
+    def compute_parallel_transport(self, template_specifications, model_options=None):
         """Given a known progression of shapes, to transport this progression onto a new shape.
 
         :param dict template_specifications: Dictionary containing the description of the task that is to be performed (such as estimating a registration, an atlas, ...)
@@ -622,6 +654,8 @@ class Deformetrica:
         """
 
         # Check and completes the input parameters.
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, _ = self.further_initialization(
             "ParallelTransport", template_specifications, model_options
         )
@@ -633,7 +667,7 @@ class Deformetrica:
             template_specifications, output_dir=self.output_dir, **model_options
         )
 
-    def compute_shooting(self, template_specifications, model_options={}):
+    def compute_shooting(self, template_specifications, model_options=None):
         """If control points and momenta corresponding to a deformation have been obtained,
         it is possible to shoot the corresponding deformation of obtain the flow of a shape under this deformation.
 
@@ -643,6 +677,8 @@ class Deformetrica:
         """
 
         # Check and completes the input parameters.
+        if model_options is None:
+            model_options = {}
         template_specifications, model_options, _ = self.further_initialization(
             "ParallelTransport", template_specifications, model_options
         )
@@ -703,31 +739,27 @@ class Deformetrica:
 
         if end_time - start_time > 60 * 60 * 24:
             logger.info(
-                ">> Estimation took: %s"
-                % time.strftime(
+                ">> Estimation took: {}".format(time.strftime(
                     "%d days, %H hours, %M minutes and %S seconds",
                     time.gmtime(end_time - start_time),
-                )
+                ))
             )
         elif end_time - start_time > 60 * 60:
             logger.info(
-                ">> Estimation took: %s"
-                % time.strftime(
+                ">> Estimation took: {}".format(time.strftime(
                     "%H hours, %M minutes and %S seconds",
                     time.gmtime(end_time - start_time),
-                )
+                ))
             )
         elif end_time - start_time > 60:
             logger.info(
-                ">> Estimation took: %s"
-                % time.strftime(
+                ">> Estimation took: {}".format(time.strftime(
                     "%M minutes and %S seconds", time.gmtime(end_time - start_time)
-                )
+                ))
             )
         else:
             logger.info(
-                ">> Estimation took: %s"
-                % time.strftime("%S seconds", time.gmtime(end_time - start_time))
+                ">> Estimation took: {}".format(time.strftime("%S seconds", time.gmtime(end_time - start_time)))
             )
 
     def __instantiate_estimator(
@@ -876,9 +908,8 @@ class Deformetrica:
             if not model_options["freeze_control_points"]:
                 model_options["freeze_control_points"] = True
                 msg = (
-                    "With active dense mode, the freeze_template (currently %s) and freeze_control_points "
-                    "(currently %s) flags are redundant. Defaulting to freeze_control_points = True."
-                    % (
+                    "With active dense mode, the freeze_template (currently {}) and freeze_control_points "
+                    "(currently {}) flags are redundant. Defaulting to freeze_control_points = True.".format(
                         str(model_options["freeze_template"]),
                         str(model_options["freeze_control_points"]),
                     )
@@ -950,9 +981,8 @@ class Deformetrica:
             ]:
                 model_options["number_of_processes"] = 1
                 msg = (
-                    'It is not possible to estimate a "%s" model with multithreading. '
+                    f'It is not possible to estimate a "{model_type}" model with multithreading. '
                     'Overriding the "number-of-processes" option, now set to 1.'
-                    % model_type
                 )
                 logger.info(">> " + msg)
 
@@ -963,9 +993,8 @@ class Deformetrica:
             ]:
                 model_options["number_of_processes"] = 1
                 msg = (
-                    'It is not possible at the moment to estimate a "%s" model with multithreading. '
+                    f'It is not possible at the moment to estimate a "{model_type}" model with multithreading. '
                     'Overriding the "number-of-processes" option, now set to 1.'
-                    % model_type
                 )
                 logger.info(">> " + msg)
 
@@ -1021,29 +1050,26 @@ class Deformetrica:
 
                 if model_options["t0"] is None:
                     logger.info(
-                        ">> Initial t0 set to the mean visit age: %.2f" % mean_visit_age
+                        f">> Initial t0 set to the mean visit age: {mean_visit_age:.2f}"
                     )
                     model_options["t0"] = mean_visit_age
                 else:
                     logger.info(
-                        ">> Initial t0 set by the user to %.2f ; note that the mean visit age is %.2f"
-                        % (model_options["t0"], mean_visit_age)
+                        ">> Initial t0 set by the user to {:.2f} ; note that the mean visit age is {:.2f}".format(model_options["t0"], mean_visit_age)
                     )
 
-                if not model_type.lower() == "regression":
+                if model_type.lower() != "regression":
                     if model_options["initial_time_shift_variance"] is None:
                         logger.info(
-                            ">> Initial time-shift std set to the empirical std of the visit ages: %.2f"
-                            % math.sqrt(var_visit_age)
+                            f">> Initial time-shift std set to the empirical std of the visit ages: {math.sqrt(var_visit_age):.2f}"
                         )
                         model_options["initial_time_shift_variance"] = var_visit_age
                     else:
                         logger.info(
                             (
-                                ">> Initial time-shift std set by the user to %.2f ; note that the empirical std of "
-                                "the visit ages is %.2f"
-                            )
-                            % (
+                                ">> Initial time-shift std set by the user to {:.2f} ; note that the empirical std of "
+                                "the visit ages is {:.2f}"
+                            ).format(
                                 math.sqrt(model_options["initial_time_shift_variance"]),
                                 math.sqrt(var_visit_age),
                             )
@@ -1080,8 +1106,7 @@ class Deformetrica:
                     self.output_dir, "deformetrica-state.p"
                 )
                 logger.info(
-                    ">> No specified state-file. By default, Deformetrica state will by saved in file: %s."
-                    % path_to_state_file
+                    f">> No specified state-file. By default, Deformetrica state will by saved in file: {path_to_state_file}."
                 )
                 if os.path.isfile(path_to_state_file):
                     os.remove(path_to_state_file)
@@ -1093,14 +1118,12 @@ class Deformetrica:
                 if os.path.exists(estimator_options["state_file"]):
                     estimator_options["load_state_file"] = True
                     logger.info(
-                        ">> Deformetrica will attempt to resume computation from the user-specified state file: %s."
-                        % estimator_options["state_file"]
+                        ">> Deformetrica will attempt to resume computation from the user-specified state file: {}.".format(estimator_options["state_file"])
                     )
                 else:
                     msg = (
-                        "The user-specified state-file does not exist: %s. State cannot be reloaded. "
-                        "Future Deformetrica state will be saved at the given path."
-                        % estimator_options["state_file"]
+                        "The user-specified state-file does not exist: {}. State cannot be reloaded. "
+                        "Future Deformetrica state will be saved at the given path.".format(estimator_options["state_file"])
                     )
                     logger.info(">> " + msg)
 
@@ -1151,8 +1174,7 @@ class Deformetrica:
         ) and model_options["initial_acceleration_variance"] is None:
             acceleration_std = 0.5
             logger.info(
-                ">> The initial acceleration std fixed effect is ARBITRARILY set to %.2f."
-                % acceleration_std
+                f">> The initial acceleration std fixed effect is ARBITRARILY set to {acceleration_std:.2f}."
             )
             model_options["initial_acceleration_variance"] = acceleration_std**2
 
@@ -1161,8 +1183,8 @@ class Deformetrica:
         for elt in template_specifications.values():
             if elt["deformable_object_type"].lower() == "image":
                 count += 1
-                if not model_options["downsampling_factor"] == 1:
-                    if "downsampling_factor" in elt.keys():
+                if model_options["downsampling_factor"] != 1:
+                    if "downsampling_factor" in elt:
                         logger.info(
                             ">> Warning: the downsampling_factor option is specified twice. "
                             "Taking the value: %d." % elt["downsampling_factor"]
@@ -1177,7 +1199,7 @@ class Deformetrica:
                         )
         if count > 1:
             raise RuntimeError("Only a single image object can be used.")
-        if count == 0 and not model_options["downsampling_factor"] == 1:
+        if count == 0 and model_options["downsampling_factor"] != 1:
             msg = (
                 'The "downsampling_factor" parameter is useful only for image data, '
                 "but none is considered here. Ignoring."
@@ -1195,7 +1217,7 @@ class Deformetrica:
                 "BayesianAtlas".lower(),
             ], (
                 'Only the "BayesianAtlas" and "LongitudinalAtlas" models can be estimated with the "McmcSaem" '
-                'algorithm, when here was specified a "%s" model.' % model_type
+                f'algorithm, when here was specified a "{model_type}" model.'
             )
 
             if model_type.lower() == "LongitudinalAtlas".lower():

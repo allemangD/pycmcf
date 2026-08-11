@@ -69,29 +69,13 @@ class FunctionalTest(unittest.TestCase):
         if command in ["estimate", "initialize"]:
             cmd = (
                 "if [ -f ~/.profile ]; then . ~/.profile; fi && "
-                "/bin/bash -c 'source ~/miniconda3/etc/profile.d/conda.sh && conda activate deformetrica_env && python %s %s %s %s --parameters=%s --output=%s -v DEBUG > %s'"
-                % (
-                    path_to_deformetrica,
-                    command,
-                    path_to_model_xml,
-                    path_to_data_set_xml,
-                    path_to_optimization_parameters_xml,
-                    path_to_output,
-                    path_to_log,
-                )
+                f"/bin/bash -c 'source ~/miniconda3/etc/profile.d/conda.sh && conda activate deformetrica_env && python {path_to_deformetrica} {command} {path_to_model_xml} {path_to_data_set_xml} --parameters={path_to_optimization_parameters_xml} --output={path_to_output} -v DEBUG > {path_to_log}'"
             )
         elif command == "compute":
             # without dataset
             cmd = (
                 "if [ -f ~/.profile ]; then . ~/.profile; fi && "
-                "/bin/bash -c 'source ~/miniconda3/etc/profile.d/conda.sh && conda activate deformetrica_env && python %s compute %s --parameters=%s --output=%s -v DEBUG > %s'"
-                % (
-                    path_to_deformetrica,
-                    path_to_model_xml,
-                    path_to_optimization_parameters_xml,
-                    path_to_output,
-                    path_to_log,
-                )
+                f"/bin/bash -c 'source ~/miniconda3/etc/profile.d/conda.sh && conda activate deformetrica_env && python {path_to_deformetrica} compute {path_to_model_xml} --parameters={path_to_optimization_parameters_xml} --output={path_to_output} -v DEBUG > {path_to_log}'"
             )
         else:
             raise TypeError("command " + command + " was not recognized.")
@@ -228,10 +212,9 @@ class FunctionalTest(unittest.TestCase):
                 )
             elif file_extension == ".png":
                 self._compare_png_files(path_to_expected_file, path_to_actual_file)
-            elif not file_extension == "":  # Case of the "log" file.
+            elif file_extension != "":  # Case of the "log" file.
                 msg = (
-                    'Un-checked file: %s. Please add the relevant comparison script for the file extensions "%s"'
-                    % (fn, file_extension)
+                    f'Un-checked file: {fn}. Please add the relevant comparison script for the file extensions "{file_extension}"'
                 )
                 logger.warning(msg)
 

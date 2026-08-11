@@ -135,7 +135,7 @@ def finalize_longitudinal_atlas(model_xml_path, output_dir="output"):
     )
     estimated_reference_time = np.loadtxt(estimated_reference_time_path)
     model_xml_level0 = insert_model_xml_deformation_parameters_entry(
-        model_xml_level0, "t0", "%.4f" % estimated_reference_time
+        model_xml_level0, "t0", f"{estimated_reference_time:.4f}"
     )
 
     # Time-shift variance.
@@ -145,7 +145,7 @@ def finalize_longitudinal_atlas(model_xml_path, output_dir="output"):
     )
     estimated_time_shift_std = np.loadtxt(estimated_time_shift_std_path)
     model_xml_level0 = insert_model_xml_level1_entry(
-        model_xml_level0, "initial-time-shift-std", "%.4f" % estimated_time_shift_std
+        model_xml_level0, "initial-time-shift-std", f"{estimated_time_shift_std:.4f}"
     )
 
     # Acceleration variance.
@@ -157,7 +157,7 @@ def finalize_longitudinal_atlas(model_xml_path, output_dir="output"):
     model_xml_level0 = insert_model_xml_level1_entry(
         model_xml_level0,
         "initial-acceleration-std",
-        "%.4f" % estimated_acceleration_std,
+        f"{estimated_acceleration_std:.4f}",
     )
 
     # Noise variance.

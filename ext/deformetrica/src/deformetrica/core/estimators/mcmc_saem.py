@@ -27,7 +27,7 @@ class McmcSaem(AbstractEstimator):
         statistical_model,
         dataset,
         optimization_method_type="undefined",
-        individual_RER={},
+        individual_RER=None,
         max_iterations=default.max_iterations,
         print_every_n_iters=default.print_every_n_iters,
         save_every_n_iters=default.save_every_n_iters,
@@ -47,6 +47,8 @@ class McmcSaem(AbstractEstimator):
         **kwargs,
     ):
 
+        if individual_RER is None:
+            individual_RER = {}
         super().__init__(
             statistical_model=statistical_model,
             dataset=dataset,
@@ -213,7 +215,7 @@ class McmcSaem(AbstractEstimator):
                 if not (self.current_mcmc_iteration % self.memory_window_size):
                     self.average_acceptance_rates_in_window = {
                         key: np.mean(self.current_acceptance_rates_in_window[key])
-                        for key in self.sampler.individual_proposal_distributions.keys()
+                        for key in self.sampler.individual_proposal_distributions
                     }
                     self.sampler.adapt_proposal_distributions(
                         self.average_acceptance_rates_in_window,
@@ -306,7 +308,7 @@ class McmcSaem(AbstractEstimator):
             average_acceptance_rate,
         ) in self.average_acceptance_rates.items():
             logger.info(
-                "\t\t %.2f \t[ %s ]" % (average_acceptance_rate, random_effect_name)
+                f"\t\t {average_acceptance_rate:.2f} \t[ {random_effect_name} ]"
             )
 
         # Let the model under optimization print information about itself.
@@ -395,8 +397,7 @@ class McmcSaem(AbstractEstimator):
             if self.gradient_based_estimator.verbose > 0:
                 logger.info("")
                 logger.info(
-                    "[ maximizing over the fixed effects with the %s optimizer ]"
-                    % self.gradient_based_estimator.name
+                    f"[ maximizing over the fixed effects with the {self.gradient_based_estimator.name} optimizer ]"
                 )
 
             success = False
@@ -437,16 +438,16 @@ class McmcSaem(AbstractEstimator):
     def _initialize_acceptance_rate_information(self):
         # Initialize average_acceptance_rates.
         self.average_acceptance_rates = {
-            key: 0.0 for key in self.sampler.individual_proposal_distributions.keys()
+            key: 0.0 for key in self.sampler.individual_proposal_distributions
         }
 
         # Initialize current_acceptance_rates_in_window.
         self.current_acceptance_rates_in_window = {
             key: np.zeros((self.memory_window_size,))
-            for key in self.sampler.individual_proposal_distributions.keys()
+            for key in self.sampler.individual_proposal_distributions
         }
         self.average_acceptance_rates_in_window = {
-            key: 0.0 for key in self.sampler.individual_proposal_distributions.keys()
+            key: 0.0 for key in self.sampler.individual_proposal_distributions
         }
 
     def _update_acceptance_rate_information(self):
@@ -460,7 +461,7 @@ class McmcSaem(AbstractEstimator):
         }
 
         # Update current_acceptance_rates_in_window.
-        for key in self.current_acceptance_rates_in_window.keys():
+        for key in self.current_acceptance_rates_in_window:
             self.current_acceptance_rates_in_window[key][
                 (self.current_mcmc_iteration - 1) % self.memory_window_size
             ] = self.current_acceptance_rates[key]
@@ -537,14 +538,14 @@ class McmcSaem(AbstractEstimator):
     def _set_parameters(self, parameters):
         fixed_effects = {
             key: parameters[key]
-            for key in self.statistical_model.get_fixed_effects().keys()
+            for key in self.statistical_model.get_fixed_effects()
         }
         self.statistical_model.set_fixed_effects(fixed_effects)
         self.population_RER = {
-            key: parameters[key] for key in self.population_RER.keys()
+            key: parameters[key] for key in self.population_RER
         }
         self.individual_RER = {
-            key: parameters[key] for key in self.individual_RER.keys()
+            key: parameters[key] for key in self.individual_RER
         }
 
     def _load_state_file(self):

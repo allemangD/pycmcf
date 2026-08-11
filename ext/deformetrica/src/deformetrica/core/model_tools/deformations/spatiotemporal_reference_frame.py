@@ -157,7 +157,7 @@ class SpatiotemporalReferenceFrame:
 
         # Assert for coherent length of attribute lists.
         assert (
-            len(self.template_points_t[list(self.template_points_t.keys())[0]])
+            len(self.template_points_t[next(iter(self.template_points_t.keys()))])
             == len(self.control_points_t)
             == len(self.projected_modulation_matrix_t)
             == len(self.times)
@@ -207,7 +207,7 @@ class SpatiotemporalReferenceFrame:
 
         # Assert for coherent length of attribute lists.
         assert (
-            len(self.template_points_t[list(self.template_points_t.keys())[0]])
+            len(self.template_points_t[next(iter(self.template_points_t.keys()))])
             == len(self.control_points_t)
             == len(self.projected_modulation_matrix_t)
             == len(self.times)
@@ -358,7 +358,7 @@ class SpatiotemporalReferenceFrame:
             self.forward_extension = 0
 
         assert (
-            len(self.template_points_t[list(self.template_points_t.keys())[0]])
+            len(self.template_points_t[next(iter(self.template_points_t.keys()))])
             == len(self.control_points_t)
             == len(self.times)
             == len(self.projected_modulation_matrix_t)
@@ -366,7 +366,7 @@ class SpatiotemporalReferenceFrame:
             "That's weird: len(self.template_points_t[list(self.template_points_t.keys())[0]]) = %d, "
             "len(self.control_points_t) = %d, len(self.times) = %d,  len(self.projected_modulation_matrix_t) = %d"
             % (
-                len(self.template_points_t[list(self.template_points_t.keys())[0]]),
+                len(self.template_points_t[next(iter(self.template_points_t.keys()))]),
                 len(self.control_points_t),
                 len(self.times),
                 len(self.projected_modulation_matrix_t),
@@ -562,7 +562,7 @@ class SpatiotemporalReferenceFrame:
                     root_name
                     + "__GeodesicFlow__ModulationMatrix__tp_"
                     + str(t)
-                    + ("__age_%.2f" % time)
+                    + (f"__age_{time:.2f}")
                     + ".txt",
                 )
 
@@ -600,7 +600,7 @@ class SpatiotemporalReferenceFrame:
                             + object_name
                             + "__tp_"
                             + str(t)
-                            + ("__age_%.2f" % time)
+                            + (f"__age_{time:.2f}")
                             + "__ForwardExponentialFlow"
                         )
                         names.append(name)
@@ -629,7 +629,7 @@ class SpatiotemporalReferenceFrame:
                             + object_name
                             + "__tp_"
                             + str(t)
-                            + ("__age_%.2f" % time)
+                            + (f"__age_{time:.2f}")
                             + "__BackwardExponentialFlow"
                         )
                         names.append(name)

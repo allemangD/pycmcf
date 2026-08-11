@@ -144,13 +144,11 @@ def estimate_longitudinal_metric_registration(xml_parameters):
     registration_output_path = Settings().output_dir
 
     # Two alternatives: scalar dataset or image dataset for now.
-    observation_type = "None"
 
     template_specifications = xml_parameters.template_specifications
     for val in template_specifications.values():
         if val["deformable_object_type"].lower() == "scalar":
             full_dataset = read_and_create_scalar_dataset(xml_parameters)
-            observation_type = "scalar"
             break
 
     if full_dataset is None:
@@ -160,7 +158,6 @@ def estimate_longitudinal_metric_registration(xml_parameters):
             xml_parameters.subject_ids,
             xml_parameters.template_specifications,
         )
-        observation_type = "image"
 
     number_of_subjects = full_dataset.number_of_subjects
     xml_parameters.save_every_n_iters = (

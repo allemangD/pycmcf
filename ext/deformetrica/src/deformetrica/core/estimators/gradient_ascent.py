@@ -29,7 +29,7 @@ class GradientAscent(AbstractEstimator):
         statistical_model,
         dataset,
         optimization_method_type="undefined",
-        individual_RER={},
+        individual_RER=None,
         optimized_log_likelihood=default.optimized_log_likelihood,
         max_iterations=default.max_iterations,
         convergence_tolerance=default.convergence_tolerance,
@@ -47,6 +47,8 @@ class GradientAscent(AbstractEstimator):
         **kwargs,
     ):
 
+        if individual_RER is None:
+            individual_RER = {}
         super().__init__(
             statistical_model=statistical_model,
             dataset=dataset,
@@ -128,14 +130,9 @@ class GradientAscent(AbstractEstimator):
                 # Print step size --------------------------------------------------------------------------------------
                 if not (self.current_iteration % self.print_every_n_iters):
                     logger.info(">> Step size and gradient norm: ")
-                    for key in gradient.keys():
+                    for key in gradient:
                         logger.info(
-                            "\t\t%.3E   and   %.3E \t[ %s ]"
-                            % (
-                                Decimal(str(self.step[key])),
-                                Decimal(str(math.sqrt(np.sum(gradient[key] ** 2)))),
-                                key,
-                            )
+                            f"\t\t{Decimal(str(self.step[key])):.3E}   and   {Decimal(str(math.sqrt(np.sum(gradient[key] ** 2)))):.3E} \t[ {key} ]"
                         )
 
                 # Try a simple gradient ascent step --------------------------------------------------------------------
@@ -166,7 +163,7 @@ class GradientAscent(AbstractEstimator):
                     new_regularity_prop = {}
                     q_prop = {}
 
-                    for key in self.step.keys():
+                    for key in self.step:
                         local_step = self.step.copy()
                         local_step[key] /= self.line_search_shrink
                         new_parameters_prop[key] = self._gradient_ascent_step(
@@ -232,7 +229,7 @@ class GradientAscent(AbstractEstimator):
 
             # Prepare next iteration -----------------------------------------------------------------------------------
             last_log_likelihood = current_log_likelihood
-            if not self.current_iteration == self.max_iterations:
+            if self.current_iteration != self.max_iterations:
                 gradient = self._evaluate_model_fit(
                     self.current_parameters, with_grad=True
                 )[2]
@@ -254,12 +251,7 @@ class GradientAscent(AbstractEstimator):
             + " -------------------------------------"
         )
         logger.info(
-            ">> Log-likelihood = %.3E \t [ attachment = %.3E ; regularity = %.3E ]"
-            % (
-                Decimal(str(self.current_log_likelihood)),
-                Decimal(str(self.current_attachment)),
-                Decimal(str(self.current_regularity)),
-            )
+            f">> Log-likelihood = {Decimal(str(self.current_log_likelihood)):.3E} \t [ attachment = {Decimal(str(self.current_attachment)):.3E} ; regularity = {Decimal(str(self.current_regularity)):.3E} ]"
         )
 
     def write(self):
@@ -298,8 +290,7 @@ class GradientAscent(AbstractEstimator):
                         default_step = 1e-5
                         msg = (
                             "Warning: no initial non-zero gradient to guide to choice of the initial step size. "
-                            "Defaulting to the ARBITRARY initial value of %.2E."
-                            % default_step
+                            f"Defaulting to the ARBITRARY initial value of {default_step:.2E}."
                         )
                         warnings.warn(msg)
                     for key in remaining_keys:
@@ -315,9 +306,9 @@ class GradientAscent(AbstractEstimator):
                 if self.initial_step_size is None:
                     msg = "Initializing all initial step sizes to the ARBITRARY default value: 1e-5."
                     warnings.warn(msg)
-                    return {key: 1e-5 for key in gradient.keys()}
+                    return {key: 1e-5 for key in gradient}
                 else:
-                    return {key: self.initial_step_size for key in gradient.keys()}
+                    return {key: self.initial_step_size for key in gradient}
         else:
             return self.step
 
@@ -349,7 +340,7 @@ class GradientAscent(AbstractEstimator):
 
     def _gradient_ascent_step(self, parameters, gradient, step):
         new_parameters = copy.deepcopy(parameters)
-        for key in gradient.keys():
+        for key in gradient:
             new_parameters[key] += gradient[key] * step[key]
         return new_parameters
 
@@ -365,14 +356,14 @@ class GradientAscent(AbstractEstimator):
     def _set_parameters(self, parameters):
         fixed_effects = {
             key: parameters[key]
-            for key in self.statistical_model.get_fixed_effects().keys()
+            for key in self.statistical_model.get_fixed_effects()
         }
         self.statistical_model.set_fixed_effects(fixed_effects)
         self.population_RER = {
-            key: parameters[key] for key in self.population_RER.keys()
+            key: parameters[key] for key in self.population_RER
         }
         self.individual_RER = {
-            key: parameters[key] for key in self.individual_RER.keys()
+            key: parameters[key] for key in self.individual_RER
         }
 
     def _load_state_file(self):
@@ -389,14 +380,14 @@ class GradientAscent(AbstractEstimator):
             pickle.dump(d, f)
 
     def _check_model_gradient(self):
-        attachment, regularity, gradient = self._evaluate_model_fit(
+        _attachment, _regularity, gradient = self._evaluate_model_fit(
             self.current_parameters, with_grad=True
         )
         parameters = copy.deepcopy(self.current_parameters)
 
         epsilon = 1e-3
 
-        for key in gradient.keys():
+        for key in gradient:
             if key in [
                 "image_intensities",
                 "landmark_points",

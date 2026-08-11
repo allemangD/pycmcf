@@ -453,7 +453,7 @@ class Geodesic:
             warnings.warn(msg)
 
         template_t = {}
-        for key in self.template_points_t0.keys():
+        for key in self.template_points_t0:
             backward_template_t = [
                 self.backward_exponential.get_initial_template_points()[key]
             ]
@@ -498,7 +498,7 @@ class Geodesic:
                     + object_name
                     + "__tp_"
                     + str(t)
-                    + ("__age_%.2f" % time)
+                    + (f"__age_{time:.2f}")
                     + object_extension
                 )
                 names.append(name)
@@ -531,7 +531,7 @@ class Geodesic:
                     root_name
                     + "__GeodesicFlow__ControlPoints__tp_"
                     + str(t)
-                    + ("__age_%.2f" % time)
+                    + (f"__age_{time:.2f}")
                     + ".txt",
                 )
                 write_2D_array(
@@ -540,6 +540,6 @@ class Geodesic:
                     root_name
                     + "__GeodesicFlow__Momenta__tp_"
                     + str(t)
-                    + ("__age_%.2f" % time)
+                    + (f"__age_{time:.2f}")
                     + ".txt",
                 )
