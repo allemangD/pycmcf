@@ -3,7 +3,7 @@ import sys
 
 from ..core import default
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + '../../../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + "../../../")
 
 import numpy as np
 
@@ -25,7 +25,7 @@ def metric_to_image_radial_length(length, affine):
 def normalize_image_intensities(intensities):
 
     dtype = str(intensities.dtype)
-    if dtype == 'uint8':
+    if dtype == "uint8":
         return np.array(intensities / 255.0, dtype=default.dtype), dtype
     else:
         return np.array(intensities, dtype=default.dtype), dtype
@@ -33,7 +33,7 @@ def normalize_image_intensities(intensities):
 
 def rescale_image_intensities(intensities, dtype):
     tol = 1e-10
-    if dtype == 'uint8':
-        return (np.clip(intensities, tol, 1 - tol) * 255).astype('uint8')
+    if dtype == "uint8":
+        return (np.clip(intensities, tol, 1 - tol) * 255).astype("uint8")
     else:
-        return intensities.astype('float32')
+        return intensities.astype("float32")

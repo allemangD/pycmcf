@@ -17,8 +17,10 @@ class PolyLineTests(unittest.TestCase):
     """
 
     def setUp(self):
-        self.points = np.array([[16.463592, -34.480583], [16.463592, -28.980583], [15.463592, -25.980583]])
-        self.points3D = np.array([np.concatenate([elt, [0.]]) for elt in self.points])
+        self.points = np.array(
+            [[16.463592, -34.480583], [16.463592, -28.980583], [15.463592, -25.980583]]
+        )
+        self.points3D = np.array([np.concatenate([elt, [0.0]]) for elt in self.points])
         self.first_line = np.array([0, 1])
 
     def _read_poly_line(self, path, dimension):
@@ -37,24 +39,37 @@ class PolyLineTests(unittest.TestCase):
         """
         Reads an example vtk file and checks a few points and triangles
         """
-        poly_line = self._read_poly_line(os.path.join(unit_tests_data_dir, "skull.vtk"), dim)
+        poly_line = self._read_poly_line(
+            os.path.join(unit_tests_data_dir, "skull.vtk"), dim
+        )
         points = poly_line.get_points()
         if dim == 2:
-            self.assertTrue(np.allclose(self.points, points[:3], rtol=1e-05, atol=1e-08))
+            self.assertTrue(
+                np.allclose(self.points, points[:3], rtol=1e-05, atol=1e-08)
+            )
         elif dim == 3:
-            self.assertTrue(np.allclose(self.points3D, points[:3], rtol=1e-05, atol=1e-08))
+            self.assertTrue(
+                np.allclose(self.points3D, points[:3], rtol=1e-05, atol=1e-08)
+            )
         other_first_triangle = poly_line.connectivity[0]
         self.assertTrue(np.allclose(self.first_line, other_first_triangle))
 
     def _test_read_poly_line_different_format(self, dim):
-        poly_line = self._read_poly_line(os.path.join(unit_tests_data_dir, "polyline_different_format.vtk"), dim)
+        poly_line = self._read_poly_line(
+            os.path.join(unit_tests_data_dir, "polyline_different_format.vtk"), dim
+        )
         points = poly_line.get_points()
         lines = poly_line.connectivity
-        tmp_folder = os.path.join(os.path.dirname(__file__), 'tmp')
+        tmp_folder = os.path.join(os.path.dirname(__file__), "tmp")
         os.mkdir(tmp_folder)
-        poly_line.write(os.path.join(tmp_folder, 'output'),
-                        os.path.join(tmp_folder, 'written_polyline_different_format.vtk'), points)
-        re_read_poly_line = self._read_poly_line(os.path.join(tmp_folder, 'written_polyline_different_format.vtk'), dim)
+        poly_line.write(
+            os.path.join(tmp_folder, "output"),
+            os.path.join(tmp_folder, "written_polyline_different_format.vtk"),
+            points,
+        )
+        re_read_poly_line = self._read_poly_line(
+            os.path.join(tmp_folder, "written_polyline_different_format.vtk"), dim
+        )
         shutil.rmtree(tmp_folder)
         re_read_points = re_read_poly_line.get_points()
         re_read_lines = re_read_poly_line.connectivity
@@ -71,19 +86,25 @@ class PolyLineTests(unittest.TestCase):
         Set new point coordinates using SetPoints
         Asserts the points sent by GetData of the object are the new points
         """
-        poly_line = self._read_poly_line(os.path.join(unit_tests_data_dir, "skull.vtk"), dim)
+        poly_line = self._read_poly_line(
+            os.path.join(unit_tests_data_dir, "skull.vtk"), dim
+        )
         points = poly_line.get_points()
         random_shift = np.random.uniform(0, 1, points.shape)
         deformed_points = points + random_shift
         poly_line.set_points(deformed_points)
         deformed_points_2 = poly_line.get_points()
-        self.assertTrue(np.allclose(deformed_points, deformed_points_2, rtol=1e-05, atol=1e-08))
+        self.assertTrue(
+            np.allclose(deformed_points, deformed_points_2, rtol=1e-05, atol=1e-08)
+        )
 
     def _test_centers_and_normals_with_dimension(self, dim):
         """
         Tests the computation of centers and normals on the hippocampus, on all triangles
         """
-        poly_line = self._read_poly_line(os.path.join(unit_tests_data_dir, "skull.vtk"), dim)
+        poly_line = self._read_poly_line(
+            os.path.join(unit_tests_data_dir, "skull.vtk"), dim
+        )
         pts = poly_line.get_points()
         lines = poly_line.connectivity
         centers, normals = poly_line.get_centers_and_normals()

@@ -6,7 +6,6 @@ from ...support.utilities.singleton_pattern import Singleton
 
 @Singleton
 class GeneralSettings:
-
     """
     General settings, shared across the whole code.
     Singleton pattern.

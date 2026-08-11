@@ -4,25 +4,35 @@ import torch
 from ...core import default
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class AbstractKernel(ABC):
-    def __init__(self, kernel_type='undefined', gpu_mode=default.gpu_mode, kernel_width=None):
+    def __init__(
+        self, kernel_type="undefined", gpu_mode=default.gpu_mode, kernel_width=None
+    ):
         self.kernel_type = kernel_type
         self.kernel_width = kernel_width
         self.gpu_mode = gpu_mode
-        logger.debug('instantiating kernel %s with kernel_width %s and gpu_mode %s. addr: %s',
-                     self.kernel_type, self.kernel_width, self.gpu_mode, hex(id(self)))
+        logger.debug(
+            "instantiating kernel %s with kernel_width %s and gpu_mode %s. addr: %s",
+            self.kernel_type,
+            self.kernel_width,
+            self.gpu_mode,
+            hex(id(self)),
+        )
 
     def __eq__(self, other):
-        return self.kernel_type == other.kernel_type \
-               and self.gpu_mode == other.gpu_mode \
-               and self.kernel_width == other.kernel_width
+        return (
+            self.kernel_type == other.kernel_type
+            and self.gpu_mode == other.gpu_mode
+            and self.kernel_width == other.kernel_width
+        )
 
     @staticmethod
-    def hash(kernel_type,  gpu_mode, *args, **kwargs):
-        return hash((kernel_type,  gpu_mode, frozenset(args), frozenset(kwargs.items())))
+    def hash(kernel_type, gpu_mode, *args, **kwargs):
+        return hash((kernel_type, gpu_mode, frozenset(args), frozenset(kwargs.items())))
 
     def __hash__(self, **kwargs):
         return AbstractKernel.hash(self.kernel_type, None, self.gpu_mode, **kwargs)
@@ -41,14 +51,14 @@ class AbstractKernel(ABC):
         """
         if y is None:
             y = x
-        assert (x.size(0) == y.size(0))
+        assert x.size(0) == y.size(0)
         sq = self._squared_distances(x, y)
-        return torch.exp(-sq / (self.kernel_width ** 2))
+        return torch.exp(-sq / (self.kernel_width**2))
 
     @staticmethod
     def _squared_distances(x, y):
-        x_norm = (x ** 2).sum(1).view(-1, 1)
-        y_norm = (y ** 2).sum(1).view(1, -1)
+        x_norm = (x**2).sum(1).view(-1, 1)
+        y_norm = (y**2).sum(1).view(1, -1)
 
         dist = x_norm + y_norm - 2.0 * torch.mm(x, torch.transpose(y, 0, 1))
         return dist
@@ -75,6 +85,6 @@ class AbstractKernel(ABC):
 
         elif gpu_mode is GpuMode.NONE:
             # tensors should be on cpu. If not they should be moved to cpu.
-            t = utilities.move_data(t, device='cpu')
+            t = utilities.move_data(t, device="cpu")
 
         return t

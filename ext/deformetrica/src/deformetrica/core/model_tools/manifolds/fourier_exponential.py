@@ -6,21 +6,28 @@ from ....core.model_tools.manifolds.exponential_interface import ExponentialInte
 from ....support.utilities.general_settings import Settings
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 """
 Class with a parametric inverse metric in Fourier form, with not so natural condition to ensure positivity...
 """
 
-class FourierExponential(ExponentialInterface):
 
+class FourierExponential(ExponentialInterface):
     def __init__(self):
         ExponentialInterface.__init__(self)
         self.dimension = Settings().dimension
         self.number_of_frequencies = 5
-        self.coefficients = Variable(torch.from_numpy(np.random.uniform(0, 1, self.number_of_frequencies)).type(Settings().tensor_scalar_type))
-        self.frequencies = Variable(torch.from_numpy(np.arange(1, self.number_of_frequencies + 1))).type(Settings().tensor_scalar_type)
-        self.sigma = 5.
+        self.coefficients = Variable(
+            torch.from_numpy(np.random.uniform(0, 1, self.number_of_frequencies)).type(
+                Settings().tensor_scalar_type
+            )
+        )
+        self.frequencies = Variable(
+            torch.from_numpy(np.arange(1, self.number_of_frequencies + 1))
+        ).type(Settings().tensor_scalar_type)
+        self.sigma = 5.0
 
         self.has_closed_form = False
         self.has_closed_form_dp = False
@@ -34,12 +41,24 @@ class FourierExponential(ExponentialInterface):
     #     self.is_modified = True
 
     def inverse_metric(self, q):
-        differences = q.view(self.dimension, -1).expand(self.dimension, self.dimension) - q
-        coeffs = self.coefficients.view(-1, 1, 1).expand(self.number_of_frequencies, self.dimension, self.dimension)
-        cosinuses = torch.cos(self.frequencies.view(-1, 1, 1).expand(self.number_of_frequencies, self.dimension, self.dimension) *
-                            differences.view(self.dimension, self.dimension, 1).expand(self.dimension, self.dimension, self.number_of_frequencies)
-                              .contiguous().view(self.number_of_frequencies, self.dimension, self.dimension))
-        out = torch.sum(coeffs * cosinuses, 0) * torch.exp(-0.5 * differences**2 * self.sigma**2)
+        differences = (
+            q.view(self.dimension, -1).expand(self.dimension, self.dimension) - q
+        )
+        coeffs = self.coefficients.view(-1, 1, 1).expand(
+            self.number_of_frequencies, self.dimension, self.dimension
+        )
+        cosinuses = torch.cos(
+            self.frequencies.view(-1, 1, 1).expand(
+                self.number_of_frequencies, self.dimension, self.dimension
+            )
+            * differences.view(self.dimension, self.dimension, 1)
+            .expand(self.dimension, self.dimension, self.number_of_frequencies)
+            .contiguous()
+            .view(self.number_of_frequencies, self.dimension, self.dimension)
+        )
+        out = torch.sum(coeffs * cosinuses, 0) * torch.exp(
+            -0.5 * differences**2 * self.sigma**2
+        )
 
         return out
 
@@ -70,4 +89,3 @@ class FourierExponential(ExponentialInterface):
 #    ...:         r = np.random.uniform(0., coefs[-1]/2)
 #    ...:         coefs.append(r)
 #    ...:     return coefs
-

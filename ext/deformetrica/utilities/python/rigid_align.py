@@ -7,11 +7,20 @@ from in_out.array_readers_and_writers import *
 
 # WORK IN PROGRESS
 
-def estimate_rigid_align(path_to_source, path_to_target, path_to_output=None,
-                         dimension=3,
-                         deformation_kernel_type='torch',
-                         attachment_type='varifold', attachment_kernel_type='torch', attachment_kernel_width=10):
+
+def estimate_rigid_align(
+    path_to_source,
+    path_to_target,
+    path_to_output=None,
+    dimension=3,
+    deformation_kernel_type="torch",
+    attachment_type="varifold",
+    attachment_kernel_type="torch",
+    attachment_kernel_width=10,
+):
     pass
+
+
 #     """
 #     Performs a registration, using the given parameters.
 #     """

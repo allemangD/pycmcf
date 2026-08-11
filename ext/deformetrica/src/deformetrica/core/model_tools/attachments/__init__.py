@@ -1,2 +1,1 @@
-
 from .multi_object_attachment import MultiObjectAttachment

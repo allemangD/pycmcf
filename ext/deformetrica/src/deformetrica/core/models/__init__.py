@@ -1,4 +1,3 @@
-
 from .abstract_statistical_model import AbstractStatisticalModel
 from .affine_atlas import AffineAtlas
 from .bayesian_atlas import BayesianAtlas

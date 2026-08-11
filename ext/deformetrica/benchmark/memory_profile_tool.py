@@ -31,12 +31,12 @@ class MemoryProfiler(Thread):
         Thread.__init__(self)
         self.freq = freq
         self.run_flag = True
-        self.data = {'ram': []}
+        self.data = {"ram": []}
 
     def run(self):
         # logger.info('MemoryProfiler::run()')
         while self.run_flag:
-            self.data['ram'].append(self.current_ram_usage())
+            self.data["ram"].append(self.current_ram_usage())
             time.sleep(self.freq)
 
     def stop(self):
@@ -50,7 +50,7 @@ class MemoryProfiler(Thread):
 
     @staticmethod
     def current_ram_usage():
-        return memory_usage(-1, interval=0)[0]    # -1 is for current process
+        return memory_usage(-1, interval=0)[0]  # -1 is for current process
 
 
 def start_memory_profile(freq=0.001):
@@ -71,6 +71,3 @@ def stop_and_clear_memory_profile(memory_profiler):
 
 def clear_memory_profile(memory_profiler):
     memory_profiler.clear()
-
-
-

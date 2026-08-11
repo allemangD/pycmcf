@@ -42,21 +42,25 @@ data_dir = os.path.join(os.path.dirname(__file__), "data")
 # }
 
 # LARGE 3D mesh
-dataset_specifications = {'dataset_filenames': [], 'subject_ids': []}
-for file in os.listdir(data_dir + '/landmark/3d/right_hippocampus_2738'):
+dataset_specifications = {"dataset_filenames": [], "subject_ids": []}
+for file in os.listdir(data_dir + "/landmark/3d/right_hippocampus_2738"):
     subject_id, visit_age = utilities.adni_extract_from_file_name(file)
 
-    dataset_specifications['dataset_filenames'].append(
-        [{'hippo': data_dir + '/landmark/3d/right_hippocampus_2738/' + file}],
+    dataset_specifications["dataset_filenames"].append(
+        [{"hippo": data_dir + "/landmark/3d/right_hippocampus_2738/" + file}],
     )
-    dataset_specifications['subject_ids'].append(subject_id)
+    dataset_specifications["subject_ids"].append(subject_id)
 
 template_specifications = {
-    'hippo': {'deformable_object_type': 'SurfaceMesh',
-              'kernel_type': 'keops', 'kernel_width': 15.0,
-              'noise_std': 6.0,
-              'filename': data_dir + '/landmark/3d/right_hippocampus_2738/sub-ADNI002S0729_ses-M00.vtk',
-              'attachment_type': 'varifold'}
+    "hippo": {
+        "deformable_object_type": "SurfaceMesh",
+        "kernel_type": "keops",
+        "kernel_width": 15.0,
+        "noise_std": 6.0,
+        "filename": data_dir
+        + "/landmark/3d/right_hippocampus_2738/sub-ADNI002S0729_ses-M00.vtk",
+        "attachment_type": "varifold",
+    }
 }
 
 # # FULL T1 IMAGE
@@ -77,51 +81,75 @@ template_specifications = {
 # }
 
 
-current_log_likelihood = 0.
+current_log_likelihood = 0.0
 
 
 def __estimator_callback(status_dict):
     global current_log_likelihood
     # current_iteration = status_dict['current_iteration']
-    current_log_likelihood = status_dict['current_log_likelihood']
+    current_log_likelihood = status_dict["current_log_likelihood"]
     return True
 
 
-def deterministic_atlas_3d_brain_structure(kernel_type, nb_process, process_per_gpu, kernel_width):
+def deterministic_atlas_3d_brain_structure(
+    kernel_type, nb_process, process_per_gpu, kernel_width
+):
 
     downsampling_factor = max(1, int(kernel_width / 2))
-    logger.info('downsampling_factor=' + str(downsampling_factor))
+    logger.info("downsampling_factor=" + str(downsampling_factor))
 
-    template_specifications['hippo']['kernel_type'] = kernel_type
-    template_specifications['hippo']['kernel_width'] = kernel_width
+    template_specifications["hippo"]["kernel_type"] = kernel_type
+    template_specifications["hippo"]["kernel_width"] = kernel_width
 
-    with Deformetrica(verbosity='DEBUG') as deformetrica:
+    with Deformetrica(verbosity="DEBUG") as deformetrica:
         deformetrica.estimate_deterministic_atlas(
             template_specifications,
             dataset_specifications,
-            estimator_options={'optimization_method_type': 'GradientAscent', 'max_iterations': 5,
-                               'use_cuda': True, 'callback': __estimator_callback},
-            model_options={'deformation_kernel_type': kernel_type, 'deformation_kernel_width': kernel_width, 'deformation_kernel_device': 'cuda',
-                           'downsampling_factor': downsampling_factor,
-                           'number_of_processes': nb_process, 'process_per_gpu': process_per_gpu},
-            write_output=False)
+            estimator_options={
+                "optimization_method_type": "GradientAscent",
+                "max_iterations": 5,
+                "use_cuda": True,
+                "callback": __estimator_callback,
+            },
+            model_options={
+                "deformation_kernel_type": kernel_type,
+                "deformation_kernel_width": kernel_width,
+                "deformation_kernel_device": "cuda",
+                "downsampling_factor": downsampling_factor,
+                "number_of_processes": nb_process,
+                "process_per_gpu": process_per_gpu,
+            },
+            write_output=False,
+        )
 
 
 def registration_3d_image(nb_process, number_of_time_points, kernel_width):
 
-    downsampling_factor = max(1, int(kernel_width/2))
-    logger.info('downsampling_factor=' + str(downsampling_factor))
+    downsampling_factor = max(1, int(kernel_width / 2))
+    logger.info("downsampling_factor=" + str(downsampling_factor))
 
-    template_specifications['brain']['kernel_width'] = kernel_width
+    template_specifications["brain"]["kernel_width"] = kernel_width
 
-    with Deformetrica(verbosity='DEBUG') as deformetrica:
-        deformetrica.estimate_registration(template_specifications, dataset_specifications,
-                                           estimator_options={'optimization_method_type': 'GradientAscent', 'max_iterations': 20,
-                                                              'use_cuda': False, 'callback': __estimator_callback},
-                                           model_options={'deformation_kernel_type': 'keops', 'deformation_kernel_width': kernel_width,
-                                                          'number_of_time_points': number_of_time_points, 'downsampling_factor': downsampling_factor,
-                                                          'number_of_processes': nb_process, 'process_per_gpu': 1},
-                                           write_output=False)
+    with Deformetrica(verbosity="DEBUG") as deformetrica:
+        deformetrica.estimate_registration(
+            template_specifications,
+            dataset_specifications,
+            estimator_options={
+                "optimization_method_type": "GradientAscent",
+                "max_iterations": 20,
+                "use_cuda": False,
+                "callback": __estimator_callback,
+            },
+            model_options={
+                "deformation_kernel_type": "keops",
+                "deformation_kernel_width": kernel_width,
+                "number_of_time_points": number_of_time_points,
+                "downsampling_factor": downsampling_factor,
+                "number_of_processes": nb_process,
+                "process_per_gpu": 1,
+            },
+            write_output=False,
+        )
 
 
 RUN_CONFIG = [
@@ -129,21 +157,19 @@ RUN_CONFIG = [
     # (deterministic_atlas_3d_brain_structure, 'keops', 12, 1, 10.0),
     # (deterministic_atlas_3d_brain_structure, 'keops', 24, 1, 10.0),
     # (deterministic_atlas_3d_brain_structure, 'keops', 1, 1, 10.0),
-
-    (deterministic_atlas_3d_brain_structure, 'keops', 2, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 3, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 4, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 6, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 8, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 10, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 12, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 16, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 20, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 24, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 28, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 32, 1, 10.0),
-    (deterministic_atlas_3d_brain_structure, 'keops', 36, 1, 10.0),
-
+    (deterministic_atlas_3d_brain_structure, "keops", 2, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 3, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 4, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 6, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 8, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 10, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 12, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 16, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 20, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 24, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 28, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 32, 1, 10.0),
+    (deterministic_atlas_3d_brain_structure, "keops", 36, 1, 10.0),
     # nb_process, number_of_time_points, kernel_width
     # (registration_3d_image, 1, 3, 10.0),
     # (registration_3d_image, 1, 5, 10.0),
@@ -154,21 +180,21 @@ RUN_CONFIG = [
 
 
 if __name__ == "__main__":
-    logger.info('torch.__version__=' + torch.__version__)
-    logger.info('pykeops.__version__=' + pykeops.__version__)
+    logger.info("torch.__version__=" + torch.__version__)
+    logger.info("pykeops.__version__=" + pykeops.__version__)
 
     res_elapsed_time = []
     res_log_likelihood = []
 
     for current_run_config in RUN_CONFIG:
         func, *args = current_run_config
-        logger.info('>>>>>>>>>>>>> func=' + str(func) + ', args=' + str(args))
+        logger.info(">>>>>>>>>>>>> func=" + str(func) + ", args=" + str(args))
 
         start = time.perf_counter()
         func(*args)
-        elapsed_time = time.perf_counter()-start
-        logger.info('elapsed_time: ' + str(elapsed_time))
-        logger.info('current_log_likelihood: ' + str(current_log_likelihood))
+        elapsed_time = time.perf_counter() - start
+        logger.info("elapsed_time: " + str(elapsed_time))
+        logger.info("current_log_likelihood: " + str(current_log_likelihood))
 
         res_elapsed_time.append(elapsed_time)
         res_log_likelihood.append(current_log_likelihood)
@@ -180,7 +206,7 @@ if __name__ == "__main__":
         gc.collect()
         time.sleep(0.5)
 
-    logger.info('===== RESULTS =====')
+    logger.info("===== RESULTS =====")
     logger.info(res_elapsed_time)
     logger.info(res_log_likelihood)
 

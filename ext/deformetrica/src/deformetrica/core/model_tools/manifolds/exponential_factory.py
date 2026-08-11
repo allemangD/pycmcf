@@ -4,11 +4,13 @@ from ....core.model_tools.manifolds.logistic_exponential import LogisticExponent
 from ....core.model_tools.manifolds.parametric_exponential import ParametricExponential
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 """
 Reads a dictionary of parameters, and returns the corresponding exponential object.
 """
+
 
 class ExponentialFactory:
     def __init__(self):
@@ -25,34 +27,42 @@ class ExponentialFactory:
         """
         Returns an exponential for a manifold of a given type, using the parameters
         """
-        if self.manifold_type == 'parametric':
+        if self.manifold_type == "parametric":
             out = ParametricExponential()
-            out.width = self.manifold_parameters['width']
-            out.number_of_interpolation_points = self.manifold_parameters['interpolation_points_torch'].size()[0]
-            out.interpolation_points_torch = self.manifold_parameters['interpolation_points_torch']
-            out.interpolation_values_torch = self.manifold_parameters['interpolation_values_torch']
+            out.width = self.manifold_parameters["width"]
+            out.number_of_interpolation_points = self.manifold_parameters[
+                "interpolation_points_torch"
+            ].size()[0]
+            out.interpolation_points_torch = self.manifold_parameters[
+                "interpolation_points_torch"
+            ]
+            out.interpolation_values_torch = self.manifold_parameters[
+                "interpolation_values_torch"
+            ]
             out.dimension = out.interpolation_points_torch.size()[1]
             return out
 
-        if self.manifold_type == 'fourier':
+        if self.manifold_type == "fourier":
             return FourierExponential()
 
-        if self.manifold_type == 'logistic':
+        if self.manifold_type == "logistic":
             out = LogisticExponential()
             return out
 
-        if self.manifold_type == 'deep':
-            out = EuclideanExponential(dimension=self.manifold_parameters['latent_space_dimension'])
+        if self.manifold_type == "deep":
+            out = EuclideanExponential(
+                dimension=self.manifold_parameters["latent_space_dimension"]
+            )
             return out
 
-        if self.manifold_type == 'euclidean':
+        if self.manifold_type == "euclidean":
             out = EuclideanExponential(dimension=Settings().dimension)
             return out
 
         raise ValueError("Unrecognized manifold type in exponential factory")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import torch
     import numpy as np
     from torch.autograd import Variable
@@ -64,9 +74,9 @@ if __name__ == '__main__':
     factory = ExponentialFactory()
     factory.set_manifold_type("fourier")
     geodesic = GenericGeodesic(factory)
-    geodesic.set_t0(1.)
-    geodesic.set_tmin(1.)
-    geodesic.set_tmax(2.)
+    geodesic.set_t0(1.0)
+    geodesic.set_tmin(1.0)
+    geodesic.set_tmax(2.0)
     geodesic.concentration_of_time_points = 20
 
     p0 = np.zeros(2)
@@ -78,11 +88,19 @@ if __name__ == '__main__':
     geodesic.set_velocity_t0(v0)
 
     for i in range(10):
-        geodesic.forward_exponential.coefficients = Variable(torch.from_numpy(np.random.uniform(0, 1, geodesic.forward_exponential.number_of_frequencies)).type(Settings().tensor_scalar_type))
+        geodesic.forward_exponential.coefficients = Variable(
+            torch.from_numpy(
+                np.random.uniform(
+                    0, 1, geodesic.forward_exponential.number_of_frequencies
+                )
+            ).type(Settings().tensor_scalar_type)
+        )
         geodesic.is_modified = True
         geodesic.update()
-        traj = np.array([elt.data.numpy() for elt in geodesic.get_geodesic_trajectory()])
+        traj = np.array(
+            [elt.data.numpy() for elt in geodesic.get_geodesic_trajectory()]
+        )
         times = geodesic.get_times()
         for d in range(len(traj[0])):
-            plt.plot(times, traj[:,d])
+            plt.plot(times, traj[:, d])
         plt.show()

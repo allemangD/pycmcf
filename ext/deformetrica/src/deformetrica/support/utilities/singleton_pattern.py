@@ -1,5 +1,4 @@
 class Singleton:
-
     """
     Singleton decorator.
     Source: https://stackoverflow.com/questions/31875/is-there-a-simple-elegant-way-to-define-singletons
@@ -23,7 +22,7 @@ class Singleton:
             return self._instance
 
     def __call__(self):
-        raise TypeError('Singletons must be accessed through `Instance()`.')
+        raise TypeError("Singletons must be accessed through `Instance()`.")
 
     def __instancecheck__(self, inst):
         return isinstance(inst, self._decorated)

@@ -7,18 +7,30 @@ from ...support import kernels as kernel_factory
 from ...core import default
 from ...core.model_tools.deformations.exponential import Exponential
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
-from ...core.models.model_functions import initialize_momenta, initialize_covariance_momenta_inverse, \
-    initialize_control_points
-from ...core.observations.deformable_objects.deformable_multi_object import DeformableMultiObject
+from ...core.models.model_functions import (
+    initialize_momenta,
+    initialize_covariance_momenta_inverse,
+    initialize_control_points,
+)
+from ...core.observations.deformable_objects.deformable_multi_object import (
+    DeformableMultiObject,
+)
 from ...in_out.array_readers_and_writers import *
-from ...in_out.dataset_functions import create_template_metadata, compute_noise_dimension
+from ...in_out.dataset_functions import (
+    create_template_metadata,
+    compute_noise_dimension,
+)
 from ...support import utilities
-from ...support.probability_distributions.inverse_wishart_distribution import InverseWishartDistribution
-from ...support.probability_distributions.multi_scalar_inverse_wishart_distribution import \
-    MultiScalarInverseWishartDistribution
+from ...support.probability_distributions.inverse_wishart_distribution import (
+    InverseWishartDistribution,
+)
+from ...support.probability_distributions.multi_scalar_inverse_wishart_distribution import (
+    MultiScalarInverseWishartDistribution,
+)
 from ...support.probability_distributions.normal_distribution import NormalDistribution
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,34 +43,31 @@ class BayesianAtlas(AbstractStatisticalModel):
     ### Constructor:
     ####################################################################################################################
 
-    def __init__(self, template_specifications,
+    def __init__(
+        self,
+        template_specifications,
+        dimension=default.dimension,
+        tensor_scalar_type=default.tensor_scalar_type,
+        tensor_integer_type=default.tensor_integer_type,
+        dense_mode=default.dense_mode,
+        number_of_processes=default.number_of_processes,
+        deformation_kernel_type=default.deformation_kernel_type,
+        deformation_kernel_width=default.deformation_kernel_width,
+        shoot_kernel_type=default.shoot_kernel_type,
+        number_of_time_points=default.number_of_time_points,
+        use_rk2_for_shoot=default.use_rk2_for_shoot,
+        use_rk2_for_flow=default.use_rk2_for_flow,
+        freeze_template=default.freeze_template,
+        use_sobolev_gradient=default.use_sobolev_gradient,
+        smoothing_kernel_width=default.smoothing_kernel_width,
+        initial_control_points=default.initial_control_points,
+        freeze_control_points=default.freeze_control_points,
+        initial_cp_spacing=default.initial_cp_spacing,
+        gpu_mode=default.gpu_mode,
+        **kwargs,
+    ):
 
-                 dimension=default.dimension,
-                 tensor_scalar_type=default.tensor_scalar_type,
-                 tensor_integer_type=default.tensor_integer_type,
-                 dense_mode=default.dense_mode,
-                 number_of_processes=default.number_of_processes,
-
-                 deformation_kernel_type=default.deformation_kernel_type,
-                 deformation_kernel_width=default.deformation_kernel_width,
-
-                 shoot_kernel_type=default.shoot_kernel_type,
-                 number_of_time_points=default.number_of_time_points,
-                 use_rk2_for_shoot=default.use_rk2_for_shoot, use_rk2_for_flow=default.use_rk2_for_flow,
-
-                 freeze_template=default.freeze_template,
-                 use_sobolev_gradient=default.use_sobolev_gradient,
-                 smoothing_kernel_width=default.smoothing_kernel_width,
-
-                 initial_control_points=default.initial_control_points,
-                 freeze_control_points=default.freeze_control_points,
-                 initial_cp_spacing=default.initial_cp_spacing,
-
-                 gpu_mode=default.gpu_mode,
-
-                 **kwargs):
-
-        AbstractStatisticalModel.__init__(self, name='BayesianAtlas', gpu_mode=gpu_mode)
+        AbstractStatisticalModel.__init__(self, name="BayesianAtlas", gpu_mode=gpu_mode)
 
         # Global-like attributes.
         self.dimension = dimension
@@ -68,110 +77,171 @@ class BayesianAtlas(AbstractStatisticalModel):
         self.number_of_processes = number_of_processes
 
         # Declare model structure.
-        self.fixed_effects['template_data'] = None
-        self.fixed_effects['control_points'] = None
-        self.fixed_effects['covariance_momenta_inverse'] = None
-        self.fixed_effects['noise_variance'] = None
+        self.fixed_effects["template_data"] = None
+        self.fixed_effects["control_points"] = None
+        self.fixed_effects["covariance_momenta_inverse"] = None
+        self.fixed_effects["noise_variance"] = None
 
         self.freeze_template = freeze_template
         self.freeze_control_points = freeze_control_points
 
-        self.priors['covariance_momenta'] = InverseWishartDistribution()
-        self.priors['noise_variance'] = MultiScalarInverseWishartDistribution()
+        self.priors["covariance_momenta"] = InverseWishartDistribution()
+        self.priors["noise_variance"] = MultiScalarInverseWishartDistribution()
 
-        self.individual_random_effects['momenta'] = NormalDistribution()
+        self.individual_random_effects["momenta"] = NormalDistribution()
 
         # Deformation.
         self.exponential = Exponential(
             dense_mode=dense_mode,
-            kernel=kernel_factory.factory(deformation_kernel_type, gpu_mode=gpu_mode, kernel_width=deformation_kernel_width),
+            kernel=kernel_factory.factory(
+                deformation_kernel_type,
+                gpu_mode=gpu_mode,
+                kernel_width=deformation_kernel_width,
+            ),
             shoot_kernel_type=shoot_kernel_type,
             number_of_time_points=number_of_time_points,
-            use_rk2_for_shoot=use_rk2_for_shoot, use_rk2_for_flow=use_rk2_for_flow)
+            use_rk2_for_shoot=use_rk2_for_shoot,
+            use_rk2_for_flow=use_rk2_for_flow,
+        )
 
         # Template.
-        (object_list, self.objects_name, self.objects_name_extension,
-         objects_noise_variance, self.multi_object_attachment) = create_template_metadata(
-            template_specifications, self.dimension, gpu_mode=gpu_mode)
+        (
+            object_list,
+            self.objects_name,
+            self.objects_name_extension,
+            objects_noise_variance,
+            self.multi_object_attachment,
+        ) = create_template_metadata(
+            template_specifications, self.dimension, gpu_mode=gpu_mode
+        )
 
         self.template = DeformableMultiObject(object_list)
         # self.template.update()
 
-        self.objects_noise_dimension = compute_noise_dimension(self.template, self.multi_object_attachment,
-                                                               self.dimension, self.objects_name)
+        self.objects_noise_dimension = compute_noise_dimension(
+            self.template,
+            self.multi_object_attachment,
+            self.dimension,
+            self.objects_name,
+        )
         self.number_of_objects = len(self.template.object_list)
 
         self.use_sobolev_gradient = use_sobolev_gradient
         self.smoothing_kernel_width = smoothing_kernel_width
         if self.use_sobolev_gradient:
-            self.sobolev_kernel = kernel_factory.factory(deformation_kernel_type, gpu_mode=gpu_mode, kernel_width=smoothing_kernel_width)
+            self.sobolev_kernel = kernel_factory.factory(
+                deformation_kernel_type,
+                gpu_mode=gpu_mode,
+                kernel_width=smoothing_kernel_width,
+            )
 
         # Template data.
-        self.fixed_effects['template_data'] = self.template.get_data()
+        self.fixed_effects["template_data"] = self.template.get_data()
 
         # Control points.
-        self.fixed_effects['control_points'] = initialize_control_points(
-            initial_control_points, self.template, initial_cp_spacing, deformation_kernel_width,
-            self.dimension, self.dense_mode)
-        self.number_of_control_points = len(self.fixed_effects['control_points'])
+        self.fixed_effects["control_points"] = initialize_control_points(
+            initial_control_points,
+            self.template,
+            initial_cp_spacing,
+            deformation_kernel_width,
+            self.dimension,
+            self.dense_mode,
+        )
+        self.number_of_control_points = len(self.fixed_effects["control_points"])
 
         # Covariance momenta.
-        self.fixed_effects['covariance_momenta_inverse'] = initialize_covariance_momenta_inverse(
-            self.fixed_effects['control_points'], self.exponential.kernel, self.dimension)
-        self.priors['covariance_momenta'].scale_matrix = np.linalg.inv(self.fixed_effects['covariance_momenta_inverse'])
+        self.fixed_effects["covariance_momenta_inverse"] = (
+            initialize_covariance_momenta_inverse(
+                self.fixed_effects["control_points"],
+                self.exponential.kernel,
+                self.dimension,
+            )
+        )
+        self.priors["covariance_momenta"].scale_matrix = np.linalg.inv(
+            self.fixed_effects["covariance_momenta_inverse"]
+        )
 
         # Noise variance.
-        self.fixed_effects['noise_variance'] = np.array(objects_noise_variance)
-        self.objects_noise_variance_prior_normalized_dof = [elt['noise_variance_prior_normalized_dof']
-                                                            for elt in template_specifications.values()]
-        self.objects_noise_variance_prior_scale_std = [elt['noise_variance_prior_scale_std']
-                                                       for elt in template_specifications.values()]
+        self.fixed_effects["noise_variance"] = np.array(objects_noise_variance)
+        self.objects_noise_variance_prior_normalized_dof = [
+            elt["noise_variance_prior_normalized_dof"]
+            for elt in template_specifications.values()
+        ]
+        self.objects_noise_variance_prior_scale_std = [
+            elt["noise_variance_prior_scale_std"]
+            for elt in template_specifications.values()
+        ]
 
         # Momenta random effect.
-        self.individual_random_effects['momenta'].mean = np.zeros((self.number_of_control_points * self.dimension,))
-        self.individual_random_effects['momenta'].set_covariance_inverse(
-            self.fixed_effects['covariance_momenta_inverse'])
+        self.individual_random_effects["momenta"].mean = np.zeros(
+            (self.number_of_control_points * self.dimension,)
+        )
+        self.individual_random_effects["momenta"].set_covariance_inverse(
+            self.fixed_effects["covariance_momenta_inverse"]
+        )
 
     def initialize_random_effects_realization(
-            self, number_of_subjects,
-            initial_momenta=default.initial_momenta,
-            covariance_momenta_prior_normalized_dof=default.covariance_momenta_prior_normalized_dof,
-            **kwargs):
+        self,
+        number_of_subjects,
+        initial_momenta=default.initial_momenta,
+        covariance_momenta_prior_normalized_dof=default.covariance_momenta_prior_normalized_dof,
+        **kwargs,
+    ):
 
         # Initialize the random effects realization.
         individual_RER = {
-            'momenta': initialize_momenta(initial_momenta, self.number_of_control_points, self.dimension,
-                                          number_of_subjects)
+            "momenta": initialize_momenta(
+                initial_momenta,
+                self.number_of_control_points,
+                self.dimension,
+                number_of_subjects,
+            )
         }
 
         # Initialize the corresponding priors.
-        self.priors['covariance_momenta'].degrees_of_freedom = \
+        self.priors["covariance_momenta"].degrees_of_freedom = (
             number_of_subjects * covariance_momenta_prior_normalized_dof
+        )
 
         return individual_RER
 
     def initialize_noise_variance(self, dataset, individual_RER):
         # Prior on the noise variance (inverse Wishart: degrees of freedom parameter).
-        for k, normalized_dof in enumerate(self.objects_noise_variance_prior_normalized_dof):
-            dof = dataset.number_of_subjects * normalized_dof * self.objects_noise_dimension[k]
-            self.priors['noise_variance'].degrees_of_freedom.append(dof)
+        for k, normalized_dof in enumerate(
+            self.objects_noise_variance_prior_normalized_dof
+        ):
+            dof = (
+                dataset.number_of_subjects
+                * normalized_dof
+                * self.objects_noise_dimension[k]
+            )
+            self.priors["noise_variance"].degrees_of_freedom.append(dof)
 
         # Prior on the noise variance (inverse Wishart: scale scalars parameters).
-        template_data, template_points, control_points = self._fixed_effects_to_torch_tensors(False)
+        template_data, template_points, control_points = (
+            self._fixed_effects_to_torch_tensors(False)
+        )
         momenta = self._individual_RER_to_torch_tensors(individual_RER, False)
 
-        residuals_per_object = sum(self._compute_residuals(
-            dataset, template_data, template_points, control_points, momenta))
+        residuals_per_object = sum(
+            self._compute_residuals(
+                dataset, template_data, template_points, control_points, momenta
+            )
+        )
         for k, scale_std in enumerate(self.objects_noise_variance_prior_scale_std):
             if scale_std is None:
-                self.priors['noise_variance'].scale_scalars.append(
-                    0.01 * residuals_per_object[k].detach().cpu().numpy()
-                    / self.priors['noise_variance'].degrees_of_freedom[k])
+                self.priors["noise_variance"].scale_scalars.append(
+                    0.01
+                    * residuals_per_object[k].detach().cpu().numpy()
+                    / self.priors["noise_variance"].degrees_of_freedom[k]
+                )
             else:
-                self.priors['noise_variance'].scale_scalars.append(scale_std ** 2)
+                self.priors["noise_variance"].scale_scalars.append(scale_std**2)
 
         # New, more informed initial value for the noise variance.
-        self.fixed_effects['noise_variance'] = np.array(self.priors['noise_variance'].scale_scalars)
+        self.fixed_effects["noise_variance"] = np.array(
+            self.priors["noise_variance"].scale_scalars
+        )
 
     ####################################################################################################################
     ### Encapsulation methods:
@@ -179,71 +249,83 @@ class BayesianAtlas(AbstractStatisticalModel):
 
     # Template data ----------------------------------------------------------------------------------------------------
     def get_template_data(self):
-        return self.fixed_effects['template_data']
+        return self.fixed_effects["template_data"]
 
     def set_template_data(self, td):
-        self.fixed_effects['template_data'] = td
+        self.fixed_effects["template_data"] = td
         self.template.set_data(td)
 
     # Control points ---------------------------------------------------------------------------------------------------
     def get_control_points(self):
-        return self.fixed_effects['control_points']
+        return self.fixed_effects["control_points"]
 
     def set_control_points(self, cp):
-        self.fixed_effects['control_points'] = cp
+        self.fixed_effects["control_points"] = cp
         self.number_of_control_points = len(cp)
 
     # Covariance momenta inverse ---------------------------------------------------------------------------------------
     def get_covariance_momenta_inverse(self):
-        return self.fixed_effects['covariance_momenta_inverse']
+        return self.fixed_effects["covariance_momenta_inverse"]
 
     def set_covariance_momenta_inverse(self, cmi):
-        self.fixed_effects['covariance_momenta_inverse'] = cmi
-        self.individual_random_effects['momenta'].set_covariance_inverse(cmi)
+        self.fixed_effects["covariance_momenta_inverse"] = cmi
+        self.individual_random_effects["momenta"].set_covariance_inverse(cmi)
 
     def set_covariance_momenta(self, cm):
         self.set_covariance_momenta_inverse(np.linalg.inv(cm))
 
     # Noise variance ---------------------------------------------------------------------------------------------------
     def get_noise_variance(self):
-        return self.fixed_effects['noise_variance']
+        return self.fixed_effects["noise_variance"]
 
     def set_noise_variance(self, nv):
-        self.fixed_effects['noise_variance'] = nv
+        self.fixed_effects["noise_variance"] = nv
 
     # Full fixed effects -----------------------------------------------------------------------------------------------
-    def get_fixed_effects(self, mode='class2'):
+    def get_fixed_effects(self, mode="class2"):
         out = {}
 
-        if mode == 'class2':
+        if mode == "class2":
             if not self.freeze_template:
-                for key, value in self.fixed_effects['template_data'].items():
+                for key, value in self.fixed_effects["template_data"].items():
                     out[key] = value
             if not self.freeze_control_points:
-                out['control_points'] = self.fixed_effects['control_points']
+                out["control_points"] = self.fixed_effects["control_points"]
 
-        elif mode == 'all':
-            for key, value in self.fixed_effects['template_data'].items():
+        elif mode == "all":
+            for key, value in self.fixed_effects["template_data"].items():
                 out[key] = value
-            out['control_points'] = self.fixed_effects['control_points']
-            out['covariance_momenta_inverse'] = self.fixed_effects['covariance_momenta_inverse']
-            out['noise_variance'] = self.fixed_effects['noise_variance']
+            out["control_points"] = self.fixed_effects["control_points"]
+            out["covariance_momenta_inverse"] = self.fixed_effects[
+                "covariance_momenta_inverse"
+            ]
+            out["noise_variance"] = self.fixed_effects["noise_variance"]
 
         return out
 
     def set_fixed_effects(self, fixed_effects):
         if not self.freeze_template:
-            template_data = {key: fixed_effects[key] for key in self.fixed_effects['template_data'].keys()}
+            template_data = {
+                key: fixed_effects[key]
+                for key in self.fixed_effects["template_data"].keys()
+            }
             self.set_template_data(template_data)
         if not self.freeze_control_points:
-            self.set_control_points(fixed_effects['control_points'])
+            self.set_control_points(fixed_effects["control_points"])
 
     ####################################################################################################################
     ### Public methods:
     ####################################################################################################################
 
-    def compute_log_likelihood(self, dataset, population_RER, individual_RER, mode='complete', with_grad=False,
-                               modified_individual_RER='all'):
+    def compute_log_likelihood(
+        self,
+        dataset,
+        population_RER,
+        individual_RER,
+        mode="complete",
+        with_grad=False,
+        modified_individual_RER="all",
+    ):
         """
         Compute the log-likelihood of the dataset, given parameters fixed_effects and random effects realizations
         population_RER and indRER.
@@ -257,16 +339,23 @@ class BayesianAtlas(AbstractStatisticalModel):
         """
 
         # Initialize: conversion from numpy to torch -------------------------------------------------------------------
-        template_data, template_points, control_points = self._fixed_effects_to_torch_tensors(with_grad)
-        momenta = self._individual_RER_to_torch_tensors(individual_RER, with_grad and mode == 'complete')
+        template_data, template_points, control_points = (
+            self._fixed_effects_to_torch_tensors(with_grad)
+        )
+        momenta = self._individual_RER_to_torch_tensors(
+            individual_RER, with_grad and mode == "complete"
+        )
 
         # Deform, update, compute metrics ------------------------------------------------------------------------------
-        residuals = self._compute_residuals(dataset, template_data, template_points, control_points, momenta)
+        residuals = self._compute_residuals(
+            dataset, template_data, template_points, control_points, momenta
+        )
 
         # Update the fixed effects only if the user asked for the complete log likelihood.
-        if mode == 'complete':
-            sufficient_statistics = self.compute_sufficient_statistics(dataset, population_RER, individual_RER,
-                                                                       residuals=residuals)
+        if mode == "complete":
+            sufficient_statistics = self.compute_sufficient_statistics(
+                dataset, population_RER, individual_RER, residuals=residuals
+            )
             self.update_fixed_effects(dataset, sufficient_statistics)
 
         # Compute the attachment, with the updated noise variance parameter in the 'complete' mode.
@@ -275,11 +364,13 @@ class BayesianAtlas(AbstractStatisticalModel):
 
         # Compute the regularity terms according to the mode.
         regularity = torch.from_numpy(np.array(0.0)).type(self.tensor_scalar_type)
-        if mode == 'complete':
+        if mode == "complete":
             regularity = self._compute_random_effects_regularity(momenta)
             regularity += self._compute_class1_priors_regularity()
-        if mode in ['complete', 'class2']:
-            regularity += self._compute_class2_priors_regularity(template_data, control_points)
+        if mode in ["complete", "class2"]:
+            regularity += self._compute_class2_priors_regularity(
+                template_data, control_points
+            )
 
         # Compute gradient if needed -----------------------------------------------------------------------------------
         if with_grad:
@@ -288,33 +379,55 @@ class BayesianAtlas(AbstractStatisticalModel):
 
             gradient = {}
             if not self.freeze_template:
-                if 'landmark_points' in template_data.keys():
+                if "landmark_points" in template_data.keys():
                     if self.use_sobolev_gradient:
-                        gradient['landmark_points'] = self.sobolev_kernel.convolve(
-                            template_data['landmark_points'].detach(), template_data['landmark_points'].detach(),
-                            template_points['landmark_points'].grad.detach()).cpu().numpy()
+                        gradient["landmark_points"] = (
+                            self.sobolev_kernel.convolve(
+                                template_data["landmark_points"].detach(),
+                                template_data["landmark_points"].detach(),
+                                template_points["landmark_points"].grad.detach(),
+                            )
+                            .cpu()
+                            .numpy()
+                        )
                     else:
-                        gradient['landmark_points'] = template_points['landmark_points'].grad.detach().cpu().numpy()
-                if 'image_intensities' in template_data.keys():
-                    gradient['image_intensities'] = template_data['image_intensities'].grad.detach().cpu().numpy()
+                        gradient["landmark_points"] = (
+                            template_points["landmark_points"]
+                            .grad.detach()
+                            .cpu()
+                            .numpy()
+                        )
+                if "image_intensities" in template_data.keys():
+                    gradient["image_intensities"] = (
+                        template_data["image_intensities"].grad.detach().cpu().numpy()
+                    )
             if not self.freeze_control_points:
-                gradient['control_points'] = control_points.grad.detach().cpu().numpy()
-            if mode == 'complete':
-                gradient['momenta'] = momenta.grad.detach().cpu().numpy()
+                gradient["control_points"] = control_points.grad.detach().cpu().numpy()
+            if mode == "complete":
+                gradient["momenta"] = momenta.grad.detach().cpu().numpy()
 
             # Return as appropriate.
-            if mode in ['complete', 'class2']:
-                return attachment.detach().cpu().numpy(), regularity.detach().cpu().numpy(), gradient
-            elif mode == 'model':
+            if mode in ["complete", "class2"]:
+                return (
+                    attachment.detach().cpu().numpy(),
+                    regularity.detach().cpu().numpy(),
+                    gradient,
+                )
+            elif mode == "model":
                 return attachments.detach().cpu().numpy(), gradient
 
         else:
-            if mode in ['complete', 'class2']:
-                return attachment.detach().cpu().numpy(), regularity.detach().cpu().numpy()
-            elif mode == 'model':
+            if mode in ["complete", "class2"]:
+                return (
+                    attachment.detach().cpu().numpy(),
+                    regularity.detach().cpu().numpy(),
+                )
+            elif mode == "model":
                 return attachments.detach().cpu().numpy()
 
-    def compute_sufficient_statistics(self, dataset, population_RER, individual_RER, residuals=None, model_terms=None):
+    def compute_sufficient_statistics(
+        self, dataset, population_RER, individual_RER, residuals=None, model_terms=None
+    ):
         """
         Compute the model sufficient statistics.
         """
@@ -322,28 +435,36 @@ class BayesianAtlas(AbstractStatisticalModel):
         sufficient_statistics = {}
 
         # Empirical momenta covariance ---------------------------------------------------------------------------------
-        momenta = individual_RER['momenta']
-        sufficient_statistics['S1'] = np.zeros((momenta[0].size, momenta[0].size))
+        momenta = individual_RER["momenta"]
+        sufficient_statistics["S1"] = np.zeros((momenta[0].size, momenta[0].size))
         for i in range(dataset.number_of_subjects):
-            sufficient_statistics['S1'] += np.dot(momenta[i].reshape(-1, 1), momenta[i].reshape(-1, 1).transpose())
+            sufficient_statistics["S1"] += np.dot(
+                momenta[i].reshape(-1, 1), momenta[i].reshape(-1, 1).transpose()
+            )
 
         # Empirical residuals variances, for each object ---------------------------------------------------------------
-        sufficient_statistics['S2'] = np.zeros((self.number_of_objects,))
+        sufficient_statistics["S2"] = np.zeros((self.number_of_objects,))
 
         # Trick to save useless computations. Could be extended to work in the multi-object case as well ...
         if model_terms is not None and self.number_of_objects == 1:
-            sufficient_statistics['S2'][0] += - 2 * np.sum(model_terms) * self.get_noise_variance()
+            sufficient_statistics["S2"][0] += (
+                -2 * np.sum(model_terms) * self.get_noise_variance()
+            )
             return sufficient_statistics
 
         # Standard case.
         if residuals is None:
-            template_data, template_points, control_points = self._fixed_effects_to_torch_tensors(False)
+            template_data, template_points, control_points = (
+                self._fixed_effects_to_torch_tensors(False)
+            )
             momenta = self._individual_RER_to_torch_tensors(individual_RER, False)
-            residuals = self._compute_residuals(dataset, template_data, template_points, control_points, momenta)
+            residuals = self._compute_residuals(
+                dataset, template_data, template_points, control_points, momenta
+            )
             residuals = [torch.sum(residuals_i) for residuals_i in residuals]
 
         for i in range(dataset.number_of_subjects):
-            sufficient_statistics['S2'] += residuals[i].detach().cpu().numpy()
+            sufficient_statistics["S2"] += residuals[i].detach().cpu().numpy()
 
         # Return
         return sufficient_statistics
@@ -353,19 +474,24 @@ class BayesianAtlas(AbstractStatisticalModel):
         Updates the fixed effects based on the sufficient statistics, maximizing the likelihood.
         """
         # Covariance of the momenta update.
-        prior_scale_matrix = self.priors['covariance_momenta'].scale_matrix
-        prior_dof = self.priors['covariance_momenta'].degrees_of_freedom
-        covariance_momenta = (sufficient_statistics['S1'] + prior_dof * np.transpose(prior_scale_matrix)) \
-                             / (dataset.number_of_subjects + prior_dof)
+        prior_scale_matrix = self.priors["covariance_momenta"].scale_matrix
+        prior_dof = self.priors["covariance_momenta"].degrees_of_freedom
+        covariance_momenta = (
+            sufficient_statistics["S1"] + prior_dof * np.transpose(prior_scale_matrix)
+        ) / (dataset.number_of_subjects + prior_dof)
         self.set_covariance_momenta(covariance_momenta)
 
         # Variance of the residual noise update.
         noise_variance = np.zeros((self.number_of_objects,))
-        prior_scale_scalars = self.priors['noise_variance'].scale_scalars
-        prior_dofs = self.priors['noise_variance'].degrees_of_freedom
+        prior_scale_scalars = self.priors["noise_variance"].scale_scalars
+        prior_dofs = self.priors["noise_variance"].degrees_of_freedom
         for k in range(self.number_of_objects):
-            noise_variance[k] = (sufficient_statistics['S2'][k] + prior_scale_scalars[k] * prior_dofs[k]) \
-                                / float(dataset.number_of_subjects * self.objects_noise_dimension[k] + prior_dofs[k])
+            noise_variance[k] = (
+                sufficient_statistics["S2"][k] + prior_scale_scalars[k] * prior_dofs[k]
+            ) / float(
+                dataset.number_of_subjects * self.objects_noise_dimension[k]
+                + prior_dofs[k]
+            )
         self.set_noise_variance(noise_variance)
 
     def initialize_template_attributes(self, template_specifications):
@@ -374,8 +500,13 @@ class BayesianAtlas(AbstractStatisticalModel):
         TemplateObjectsNormKernelType and TemplateObjectsNormKernelWidth attributes.
         """
 
-        t_list, t_name, t_name_extension, t_noise_variance, t_multi_object_attachment = \
-            create_template_metadata(template_specifications, gpu_mode=self.gpu_mode)
+        (
+            t_list,
+            t_name,
+            t_name_extension,
+            t_noise_variance,
+            t_multi_object_attachment,
+        ) = create_template_metadata(template_specifications, gpu_mode=self.gpu_mode)
 
         self.template.object_list = t_list
         self.objects_name = t_name
@@ -383,8 +514,9 @@ class BayesianAtlas(AbstractStatisticalModel):
         self.multi_object_attachment = t_multi_object_attachment
 
         self.template.update(self.dimension)
-        self.objects_noise_dimension = compute_noise_dimension(self.template, self.multi_object_attachment,
-                                                               self.dimension)
+        self.objects_noise_dimension = compute_noise_dimension(
+            self.template, self.multi_object_attachment, self.dimension
+        )
 
     ####################################################################################################################
     ### Private methods:
@@ -403,8 +535,14 @@ class BayesianAtlas(AbstractStatisticalModel):
         number_of_subjects = len(residuals)
         attachments = torch.zeros((number_of_subjects,)).type(self.tensor_scalar_type)
         for i in range(number_of_subjects):
-            attachments[i] = - 0.5 * torch.sum(residuals[i] / utilities.move_data(
-                self.fixed_effects['noise_variance'], dtype=self.tensor_scalar_type, device=residuals[i].device))
+            attachments[i] = -0.5 * torch.sum(
+                residuals[i]
+                / utilities.move_data(
+                    self.fixed_effects["noise_variance"],
+                    dtype=self.tensor_scalar_type,
+                    device=residuals[i].device,
+                )
+            )
         return attachments
 
     def _compute_random_effects_regularity(self, momenta):
@@ -416,13 +554,18 @@ class BayesianAtlas(AbstractStatisticalModel):
 
         # Momenta random effect.
         for i in range(number_of_subjects):
-            regularity += self.individual_random_effects['momenta'].compute_log_likelihood_torch(
-                momenta[i], self.tensor_scalar_type)
+            regularity += self.individual_random_effects[
+                "momenta"
+            ].compute_log_likelihood_torch(momenta[i], self.tensor_scalar_type)
 
         # Noise random effect.
         for k in range(self.number_of_objects):
-            regularity -= 0.5 * self.objects_noise_dimension[k] * number_of_subjects \
-                          * math.log(self.fixed_effects['noise_variance'][k])
+            regularity -= (
+                0.5
+                * self.objects_noise_dimension[k]
+                * number_of_subjects
+                * math.log(self.fixed_effects["noise_variance"][k])
+            )
 
         return regularity
 
@@ -435,11 +578,14 @@ class BayesianAtlas(AbstractStatisticalModel):
         regularity = 0.0
 
         # Covariance momenta prior.
-        regularity += self.priors['covariance_momenta'].compute_log_likelihood(
-            self.fixed_effects['covariance_momenta_inverse'])
+        regularity += self.priors["covariance_momenta"].compute_log_likelihood(
+            self.fixed_effects["covariance_momenta_inverse"]
+        )
 
         # Noise variance prior.
-        regularity += self.priors['noise_variance'].compute_log_likelihood(self.fixed_effects['noise_variance'])
+        regularity += self.priors["noise_variance"].compute_log_likelihood(
+            self.fixed_effects["noise_variance"]
+        )
 
         return regularity
 
@@ -461,7 +607,9 @@ class BayesianAtlas(AbstractStatisticalModel):
 
         return regularity
 
-    def _compute_residuals(self, dataset, template_data, template_points, control_points, momenta):
+    def _compute_residuals(
+        self, dataset, template_data, template_points, control_points, momenta
+    ):
         """
         Core part of the ComputeLogLikelihood methods. Fully torch.
         """
@@ -482,8 +630,14 @@ class BayesianAtlas(AbstractStatisticalModel):
             self.exponential.move_data_to_(device=device)
             self.exponential.update()
             deformed_points = self.exponential.get_template_points()
-            deformed_data = self.template.get_deformed_data(deformed_points, template_data)
-            residuals.append(self.multi_object_attachment.compute_distances(deformed_data, self.template, target))
+            deformed_data = self.template.get_deformed_data(
+                deformed_points, template_data
+            )
+            residuals.append(
+                self.multi_object_attachment.compute_distances(
+                    deformed_data, self.template, target
+                )
+            )
 
         return residuals
 
@@ -496,25 +650,38 @@ class BayesianAtlas(AbstractStatisticalModel):
         Convert the input fixed_effects into torch tensors.
         """
         # Template data.
-        template_data = self.fixed_effects['template_data']
-        template_data = {key: torch.from_numpy(value).type(self.tensor_scalar_type).requires_grad_(
-            not self.freeze_template and with_grad) for key, value in template_data.items()}
+        template_data = self.fixed_effects["template_data"]
+        template_data = {
+            key: torch.from_numpy(value)
+            .type(self.tensor_scalar_type)
+            .requires_grad_(not self.freeze_template and with_grad)
+            for key, value in template_data.items()
+        }
 
         # Template points.
         template_points = self.template.get_points()
-        template_points = {key: torch.from_numpy(value).type(self.tensor_scalar_type).requires_grad_(
-            not self.freeze_template and with_grad) for key, value in template_points.items()}
+        template_points = {
+            key: torch.from_numpy(value)
+            .type(self.tensor_scalar_type)
+            .requires_grad_(not self.freeze_template and with_grad)
+            for key, value in template_points.items()
+        }
 
         # Control points.
         if self.dense_mode:
-            assert (('landmark_points' in self.template.get_points().keys()) and
-                    ('image_points' not in self.template.get_points().keys())), \
-                'In dense mode, only landmark objects are allowed. One at least is needed.'
-            control_points = template_points['landmark_points']
+            assert ("landmark_points" in self.template.get_points().keys()) and (
+                "image_points" not in self.template.get_points().keys()
+            ), (
+                "In dense mode, only landmark objects are allowed. One at least is needed."
+            )
+            control_points = template_points["landmark_points"]
         else:
-            control_points = self.fixed_effects['control_points']
-            control_points = torch.from_numpy(control_points).type(self.tensor_scalar_type).requires_grad_(
-                not self.freeze_control_points and with_grad)
+            control_points = self.fixed_effects["control_points"]
+            control_points = (
+                torch.from_numpy(control_points)
+                .type(self.tensor_scalar_type)
+                .requires_grad_(not self.freeze_control_points and with_grad)
+            )
 
         return template_data, template_points, control_points
 
@@ -523,8 +690,12 @@ class BayesianAtlas(AbstractStatisticalModel):
         Convert the input individual_RER into torch tensors.
         """
         # Momenta.
-        momenta = individual_RER['momenta']
-        momenta = torch.from_numpy(momenta).type(self.tensor_scalar_type).requires_grad_(with_grad)
+        momenta = individual_RER["momenta"]
+        momenta = (
+            torch.from_numpy(momenta)
+            .type(self.tensor_scalar_type)
+            .requires_grad_(with_grad)
+        )
         return momenta
 
     ####################################################################################################################
@@ -534,33 +705,55 @@ class BayesianAtlas(AbstractStatisticalModel):
     def print(self, individual_RER):
         pass
 
-    def write(self, dataset, population_RER, individual_RER, output_dir, update_fixed_effects=True,
-              write_residuals=True):
+    def write(
+        self,
+        dataset,
+        population_RER,
+        individual_RER,
+        output_dir,
+        update_fixed_effects=True,
+        write_residuals=True,
+    ):
 
         # Write the model predictions, and compute the residuals at the same time.
-        residuals = self._write_model_predictions(dataset, individual_RER, output_dir,
-                                                  compute_residuals=(update_fixed_effects or write_residuals))
+        residuals = self._write_model_predictions(
+            dataset,
+            individual_RER,
+            output_dir,
+            compute_residuals=(update_fixed_effects or write_residuals),
+        )
 
         # Optionally update the fixed effects.
         if update_fixed_effects:
-            sufficient_statistics = self.compute_sufficient_statistics(dataset, population_RER, individual_RER,
-                                                                       residuals=residuals)
+            sufficient_statistics = self.compute_sufficient_statistics(
+                dataset, population_RER, individual_RER, residuals=residuals
+            )
             self.update_fixed_effects(dataset, sufficient_statistics)
 
         # Write residuals.
         if write_residuals:
-            residuals_list = [[residuals_i_k.detach().cpu().numpy() for residuals_i_k in residuals_i]
-                              for residuals_i in residuals]
-            write_2D_list(residuals_list, output_dir, self.name + "__EstimatedParameters__Residuals.txt")
+            residuals_list = [
+                [residuals_i_k.detach().cpu().numpy() for residuals_i_k in residuals_i]
+                for residuals_i in residuals
+            ]
+            write_2D_list(
+                residuals_list,
+                output_dir,
+                self.name + "__EstimatedParameters__Residuals.txt",
+            )
 
         # Write the model parameters.
         self._write_model_parameters(individual_RER, output_dir)
 
-    def _write_model_predictions(self, dataset, individual_RER, output_dir, compute_residuals=True):
+    def _write_model_predictions(
+        self, dataset, individual_RER, output_dir, compute_residuals=True
+    ):
         device, _ = utilities.get_best_device(self.exponential.kernel.gpu_mode)
 
         # Initialize.
-        template_data, template_points, control_points = self._fixed_effects_to_torch_tensors(False)
+        template_data, template_points, control_points = (
+            self._fixed_effects_to_torch_tensors(False)
+        )
         momenta = self._individual_RER_to_torch_tensors(individual_RER, False)
 
         # Deform, write reconstructions and compute residuals.
@@ -574,19 +767,38 @@ class BayesianAtlas(AbstractStatisticalModel):
             self.exponential.update()
 
             deformed_points = self.exponential.get_template_points()
-            deformed_data = self.template.get_deformed_data(deformed_points, template_data)
+            deformed_data = self.template.get_deformed_data(
+                deformed_points, template_data
+            )
 
             if compute_residuals:
-                residuals.append(self.multi_object_attachment.compute_distances(
-                    deformed_data, self.template, dataset.deformable_objects[i][0]))
+                residuals.append(
+                    self.multi_object_attachment.compute_distances(
+                        deformed_data, self.template, dataset.deformable_objects[i][0]
+                    )
+                )
 
             names = []
-            for k, (object_name, object_extension) \
-                    in enumerate(zip(self.objects_name, self.objects_name_extension)):
-                name = self.name + '__Reconstruction__' + object_name + '__subject_' + subject_id + object_extension
+            for k, (object_name, object_extension) in enumerate(
+                zip(self.objects_name, self.objects_name_extension)
+            ):
+                name = (
+                    self.name
+                    + "__Reconstruction__"
+                    + object_name
+                    + "__subject_"
+                    + subject_id
+                    + object_extension
+                )
                 names.append(name)
-            self.template.write(output_dir, names,
-                                {key: value.detach().cpu().numpy() for key, value in deformed_data.items()})
+            self.template.write(
+                output_dir,
+                names,
+                {
+                    key: value.detach().cpu().numpy()
+                    for key, value in deformed_data.items()
+                },
+            )
 
         return residuals
 
@@ -594,20 +806,39 @@ class BayesianAtlas(AbstractStatisticalModel):
         # Template.
         template_names = []
         for i in range(len(self.objects_name)):
-            aux = self.name + "__EstimatedParameters__Template_" + self.objects_name[i] + self.objects_name_extension[i]
+            aux = (
+                self.name
+                + "__EstimatedParameters__Template_"
+                + self.objects_name[i]
+                + self.objects_name_extension[i]
+            )
             template_names.append(aux)
         self.template.write(output_dir, template_names)
 
         # Control points.
-        write_2D_array(self.get_control_points(), output_dir, self.name + "__EstimatedParameters__ControlPoints.txt")
+        write_2D_array(
+            self.get_control_points(),
+            output_dir,
+            self.name + "__EstimatedParameters__ControlPoints.txt",
+        )
 
         # Momenta.
-        write_3D_array(individual_RER['momenta'], output_dir, self.name + "__EstimatedParameters__Momenta.txt")
+        write_3D_array(
+            individual_RER["momenta"],
+            output_dir,
+            self.name + "__EstimatedParameters__Momenta.txt",
+        )
 
         # Momenta covariance.
-        write_2D_array(self.get_covariance_momenta_inverse(), output_dir,
-                       self.name + "__EstimatedParameters__CovarianceMomentaInverse.txt")
+        write_2D_array(
+            self.get_covariance_momenta_inverse(),
+            output_dir,
+            self.name + "__EstimatedParameters__CovarianceMomentaInverse.txt",
+        )
 
         # Noise variance.
-        write_2D_array(np.sqrt(self.get_noise_variance()), output_dir,
-                       self.name + "__EstimatedParameters__NoiseStd.txt")
+        write_2D_array(
+            np.sqrt(self.get_noise_variance()),
+            output_dir,
+            self.name + "__EstimatedParameters__NoiseStd.txt",
+        )

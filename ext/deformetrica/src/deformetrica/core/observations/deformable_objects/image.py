@@ -4,10 +4,14 @@ import nibabel as nib
 import numpy as np
 import torch
 
-from ....in_out.image_functions import rescale_image_intensities, points_to_voxels_transform
+from ....in_out.image_functions import (
+    rescale_image_intensities,
+    points_to_voxels_transform,
+)
 from ....support import utilities
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,9 +30,11 @@ class Image:
     # Constructor.
     def __init__(self, intensities, intensities_dtype, affine):
         self.dimension = len(intensities.shape)
-        assert self.dimension in [2, 3], 'Ambient-space dimension must be either 2 or 3.'
+        assert self.dimension in [2, 3], (
+            "Ambient-space dimension must be either 2 or 3."
+        )
 
-        self.type = 'Image'
+        self.type = "Image"
         self.is_modified = False
 
         self.intensities = intensities
@@ -74,11 +80,14 @@ class Image:
 
         axes = []
         for d in range(self.dimension):
-            axe = np.linspace(self.corner_points[0, d], self.corner_points[2 ** d, d],
-                              image_shape[d] // self.downsampling_factor)
+            axe = np.linspace(
+                self.corner_points[0, d],
+                self.corner_points[2**d, d],
+                image_shape[d] // self.downsampling_factor,
+            )
             axes.append(axe)
 
-        points = np.array(np.meshgrid(*axes, indexing='ij')[:])
+        points = np.array(np.meshgrid(*axes, indexing="ij")[:])
         for d in range(self.dimension):
             points = np.swapaxes(points, d, d + 1)
 
@@ -93,23 +102,37 @@ class Image:
         assert isinstance(deformed_points, torch.Tensor)
         assert isinstance(intensities, torch.Tensor)
 
-        intensities = utilities.move_data(intensities, dtype=deformed_points.type(), device=deformed_points.device)
+        intensities = utilities.move_data(
+            intensities, dtype=deformed_points.type(), device=deformed_points.device
+        )
         assert deformed_points.device == intensities.device
 
         tensor_integer_type = {
-            'cpu': 'torch.LongTensor',
-            'cuda': 'torch.cuda.LongTensor'
+            "cpu": "torch.LongTensor",
+            "cuda": "torch.cuda.LongTensor",
         }[deformed_points.device.type]
 
         image_shape = self.intensities.shape
         deformed_voxels = points_to_voxels_transform(deformed_points, self.affine)
-        assert deformed_points.device == deformed_voxels.device, 'tensors must be on the same device'
+        assert deformed_points.device == deformed_voxels.device, (
+            "tensors must be on the same device"
+        )
 
         if self.dimension == 2:
             if not self.downsampling_factor == 1:
                 shape = deformed_points.shape
-                deformed_voxels = torch.nn.functional.interpolate(deformed_voxels.permute(2, 0, 1).contiguous().view(1, shape[2], shape[0], shape[1]),
-                                                                  size=image_shape, mode='bilinear', align_corners=True)[0].permute(1, 2, 0).contiguous()
+                deformed_voxels = (
+                    torch.nn.functional.interpolate(
+                        deformed_voxels.permute(2, 0, 1)
+                        .contiguous()
+                        .view(1, shape[2], shape[0], shape[1]),
+                        size=image_shape,
+                        mode="bilinear",
+                        align_corners=True,
+                    )[0]
+                    .permute(1, 2, 0)
+                    .contiguous()
+                )
 
             u, v = deformed_voxels.view(-1, 2)[:, 0], deformed_voxels.view(-1, 2)[:, 1]
 
@@ -126,20 +149,48 @@ class Image:
             gu = (u1 + 1) - u
             gv = (v1 + 1) - v
 
-            deformed_intensities = (intensities[u1.type(tensor_integer_type), v1.type(tensor_integer_type)] * gu * gv +
-                                    intensities[u1.type(tensor_integer_type), v2.type(tensor_integer_type)] * gu * fv +
-                                    intensities[u2.type(tensor_integer_type), v1.type(tensor_integer_type)] * fu * gv +
-                                    intensities[u2.type(tensor_integer_type), v2.type(tensor_integer_type)] * fu * fv).view(image_shape)
+            deformed_intensities = (
+                intensities[u1.type(tensor_integer_type), v1.type(tensor_integer_type)]
+                * gu
+                * gv
+                + intensities[
+                    u1.type(tensor_integer_type), v2.type(tensor_integer_type)
+                ]
+                * gu
+                * fv
+                + intensities[
+                    u2.type(tensor_integer_type), v1.type(tensor_integer_type)
+                ]
+                * fu
+                * gv
+                + intensities[
+                    u2.type(tensor_integer_type), v2.type(tensor_integer_type)
+                ]
+                * fu
+                * fv
+            ).view(image_shape)
 
         elif self.dimension == 3:
             if not self.downsampling_factor == 1:
                 shape = deformed_points.shape
-                deformed_voxels = torch.nn.functional.interpolate(deformed_voxels.permute(3, 0, 1, 2).contiguous().view(1, shape[3], shape[0], shape[1], shape[2]),
-                                                                  size=image_shape, mode='trilinear', align_corners=True)[0].permute(1, 2, 3, 0).contiguous()
+                deformed_voxels = (
+                    torch.nn.functional.interpolate(
+                        deformed_voxels.permute(3, 0, 1, 2)
+                        .contiguous()
+                        .view(1, shape[3], shape[0], shape[1], shape[2]),
+                        size=image_shape,
+                        mode="trilinear",
+                        align_corners=True,
+                    )[0]
+                    .permute(1, 2, 3, 0)
+                    .contiguous()
+                )
 
-            u, v, w = deformed_voxels.view(-1, 3)[:, 0], \
-                      deformed_voxels.view(-1, 3)[:, 1], \
-                      deformed_voxels.view(-1, 3)[:, 2]
+            u, v, w = (
+                deformed_voxels.view(-1, 3)[:, 0],
+                deformed_voxels.view(-1, 3)[:, 1],
+                deformed_voxels.view(-1, 3)[:, 2],
+            )
 
             u1 = torch.floor(u.detach())
             v1 = torch.floor(v.detach())
@@ -159,17 +210,77 @@ class Image:
             gv = (v1 + 1) - v
             gw = (w1 + 1) - w
 
-            deformed_intensities = (intensities[u1.type(tensor_integer_type), v1.type(tensor_integer_type), w1.type(tensor_integer_type)] * gu * gv * gw +
-                                    intensities[u1.type(tensor_integer_type), v1.type(tensor_integer_type), w2.type(tensor_integer_type)] * gu * gv * fw +
-                                    intensities[u1.type(tensor_integer_type), v2.type(tensor_integer_type), w1.type(tensor_integer_type)] * gu * fv * gw +
-                                    intensities[u1.type(tensor_integer_type), v2.type(tensor_integer_type), w2.type(tensor_integer_type)] * gu * fv * fw +
-                                    intensities[u2.type(tensor_integer_type), v1.type(tensor_integer_type), w1.type(tensor_integer_type)] * fu * gv * gw +
-                                    intensities[u2.type(tensor_integer_type), v1.type(tensor_integer_type), w2.type(tensor_integer_type)] * fu * gv * fw +
-                                    intensities[u2.type(tensor_integer_type), v2.type(tensor_integer_type), w1.type(tensor_integer_type)] * fu * fv * gw +
-                                    intensities[u2.type(tensor_integer_type), v2.type(tensor_integer_type), w2.type(tensor_integer_type)] * fu * fv * fw).view(image_shape)
+            deformed_intensities = (
+                intensities[
+                    u1.type(tensor_integer_type),
+                    v1.type(tensor_integer_type),
+                    w1.type(tensor_integer_type),
+                ]
+                * gu
+                * gv
+                * gw
+                + intensities[
+                    u1.type(tensor_integer_type),
+                    v1.type(tensor_integer_type),
+                    w2.type(tensor_integer_type),
+                ]
+                * gu
+                * gv
+                * fw
+                + intensities[
+                    u1.type(tensor_integer_type),
+                    v2.type(tensor_integer_type),
+                    w1.type(tensor_integer_type),
+                ]
+                * gu
+                * fv
+                * gw
+                + intensities[
+                    u1.type(tensor_integer_type),
+                    v2.type(tensor_integer_type),
+                    w2.type(tensor_integer_type),
+                ]
+                * gu
+                * fv
+                * fw
+                + intensities[
+                    u2.type(tensor_integer_type),
+                    v1.type(tensor_integer_type),
+                    w1.type(tensor_integer_type),
+                ]
+                * fu
+                * gv
+                * gw
+                + intensities[
+                    u2.type(tensor_integer_type),
+                    v1.type(tensor_integer_type),
+                    w2.type(tensor_integer_type),
+                ]
+                * fu
+                * gv
+                * fw
+                + intensities[
+                    u2.type(tensor_integer_type),
+                    v2.type(tensor_integer_type),
+                    w1.type(tensor_integer_type),
+                ]
+                * fu
+                * fv
+                * gw
+                + intensities[
+                    u2.type(tensor_integer_type),
+                    v2.type(tensor_integer_type),
+                    w2.type(tensor_integer_type),
+                ]
+                * fu
+                * fv
+                * fw
+            ).view(image_shape)
 
         else:
-            raise RuntimeError('Incorrect dimension of the ambient space: %d' % self.dimension)
+            raise RuntimeError(
+                "Incorrect dimension of the ambient space: %d" % self.dimension
+            )
 
         return deformed_intensities
 
@@ -198,7 +309,9 @@ class Image:
         if intensities is None:
             intensities = self.get_intensities()
 
-        intensities_rescaled = rescale_image_intensities(intensities, self.intensities_dtype)
+        intensities_rescaled = rescale_image_intensities(
+            intensities, self.intensities_dtype
+        )
 
         if name.find(".png") > 0:
             pimg.fromarray(intensities_rescaled).save(os.path.join(output_dir, name))
@@ -208,7 +321,9 @@ class Image:
         elif name.find(".npy") > 0:
             np.save(os.path.join(output_dir, name), intensities_rescaled)
         else:
-            raise ValueError('Writing images with the given extension "%s" is not coded yet.' % name)
+            raise ValueError(
+                'Writing images with the given extension "%s" is not coded yet.' % name
+            )
 
     ####################################################################################################################
     ### Utility methods:
@@ -259,6 +374,6 @@ class Image:
         #     corner_points[7] = np.dot(self.affine[0:3, 0:3], np.array([umax, vmax, wmax])) + self.affine[0:3, 3]
 
         else:
-            raise RuntimeError('Invalid dimension: %d' % self.dimension)
+            raise RuntimeError("Invalid dimension: %d" % self.dimension)
 
         self.corner_points = corner_points

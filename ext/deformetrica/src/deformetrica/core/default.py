@@ -3,9 +3,9 @@ import os
 from ..core import GpuMode
 from ..support import utilities
 
-logger_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logger_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-dtype = 'float32'
+dtype = "float32"
 random_seed = None
 tensor_scalar_type = utilities.get_torch_scalar_type(dtype)
 tensor_integer_type = utilities.get_torch_integer_type(dtype)
@@ -13,8 +13,8 @@ tensor_integer_type = utilities.get_torch_integer_type(dtype)
 # deformation_kernel = kernel_factory.factory(kernel_factory.Type.TORCH, kernel_width=1.)
 deformation_kernel = None
 
-output_dir = os.path.join(os.getcwd(), 'output')
-preprocessing_dir = os.path.join(os.getcwd(), 'preprocessing')
+output_dir = os.path.join(os.getcwd(), "output")
+preprocessing_dir = os.path.join(os.getcwd(), "preprocessing")
 state_file = None
 load_state_file = False
 
@@ -22,11 +22,11 @@ load_state_file = False
 number_of_processes = 1
 process_per_gpu = 1
 
-model_type = 'undefined'
+model_type = "undefined"
 template_specifications = {}
 deformation_kernel_width = 1.0
-deformation_kernel_type = 'keops'
-deformation_kernel_device = 'auto'
+deformation_kernel_type = "keops"
+deformation_kernel_device = "auto"
 
 shoot_kernel_type = None
 number_of_time_points = 11
@@ -35,8 +35,8 @@ number_of_sources = None
 use_rk2_for_shoot = False
 use_rk2_for_flow = False
 t0 = None
-tmin = float('inf')
-tmax = - float('inf')
+tmin = float("inf")
+tmax = -float("inf")
 initial_cp_spacing = None
 dimension = None
 covariance_momenta_prior_normalized_dof = 0.001
@@ -44,8 +44,8 @@ covariance_momenta_prior_normalized_dof = 0.001
 dataset_filenames = []
 visit_ages = []
 subject_ids = []
-optimization_method_type = 'ScipyLBFGS'
-optimized_log_likelihood = 'complete'
+optimization_method_type = "ScipyLBFGS"
+optimized_log_likelihood = "complete"
 max_iterations = 100
 max_line_search_iterations = 10
 save_every_n_iters = 100
@@ -67,7 +67,7 @@ downsampling_factor = 1
 dense_mode = False
 gpu_mode = GpuMode.KERNEL
 # use_cuda = True if torch.cuda.is_available() else False
-_cuda_is_used = False   # true if at least one operation will use CUDA.
+_cuda_is_used = False  # true if at least one operation will use CUDA.
 _keops_is_used = False  # true if at least one keops kernel operation will take place.
 
 freeze_template = False
@@ -105,7 +105,7 @@ initial_sources = None
 initial_sources_mean = None
 initial_sources_std = None
 
-sampler = 'SrwMhwg'
+sampler = "SrwMhwg"
 individual_proposal_distributions = {}
 
 momenta_proposal_std = 0.01
