@@ -1,3 +1,4 @@
+import logging
 import math
 import os.path
 import shutil
@@ -5,16 +6,14 @@ import warnings
 from copy import deepcopy
 
 import matplotlib.pyplot as plt
-
-from torch import nn
-from torch import optim
+from torch import nn, optim
 from torch.autograd import Variable
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 
 from ...core.model_tools.manifolds.metric_learning_nets import (
-    ScalarNet,
     ImageNet2d,
     ImageNet3d,
+    ScalarNet,
 )
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
 from ...in_out.array_readers_and_writers import *
@@ -25,8 +24,6 @@ from ...support.probability_distributions.multi_scalar_normal_distribution impor
     MultiScalarNormalDistribution,
 )
 from ...support.utilities.general_settings import Settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -398,7 +395,7 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
             train_loss /= nb_train_batches
             if epoch % 10 == 0:
                 logger.info(
-                    "Epoch {}/{}".format(epoch, nb_epochs), "Train loss:", train_loss
+                    f"Epoch {epoch}/{nb_epochs}", "Train loss:", train_loss
                 )
 
         self.set_metric_parameters(self.net.get_parameters())
@@ -1002,9 +999,7 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
                     self.net = ImageNet2d128(in_dimension=self.latent_space_dimension)
                 else:
                     raise ValueError(
-                        "I do not have a generative network for this image shape %i %i".format(
-                            a, b
-                        )
+                        "I do not have a generative network for this image shape %i %i"
                     )
             elif Settings().dimension == 3:
                 msg = "Defaulting Image net output dimension to 64 x 64 x 64"
@@ -1012,9 +1007,7 @@ class LongitudinalMetricLearning(AbstractStatisticalModel):
                 self.net = ImageNet3d(in_dimension=self.latent_space_dimension)
             else:
                 raise ValueError(
-                    "The dimension in the settings (%i) seems to be wrong".format(
-                        Settings().dimension
-                    )
+                    "The dimension in the settings (%i) seems to be wrong"
                 )
 
         self.set_metric_parameters(self.net.get_parameters())

@@ -1,24 +1,23 @@
 import os
 import sys
 
+import support.kernels as kernel_factory
+
 # logger.info(sys.path)
 # sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + '../../../')
-
 import torch
-
 from api.deformetrica import Deformetrica
-from deformetrica import get_model_options
-
-from in_out.xml_parameters import XmlParameters
 from core.model_tools.deformations.spatiotemporal_reference_frame import (
     SpatiotemporalReferenceFrame,
 )
-from in_out.dataset_functions import create_template_metadata
 from core.observations.deformable_objects.deformable_multi_object import (
     DeformableMultiObject,
 )
-import support.kernels as kernel_factory
 from in_out.array_readers_and_writers import *
+from in_out.dataset_functions import create_template_metadata
+from in_out.xml_parameters import XmlParameters
+
+from deformetrica import get_model_options
 
 if __name__ == "__main__":
     logger.info("")

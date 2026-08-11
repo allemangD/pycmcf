@@ -8,9 +8,9 @@ import fnmatch
 import xml.etree.ElementTree as et
 from xml.dom.minidom import parseString
 
-from ..in_out.xml_parameters import XmlParameters
-from ..in_out.dataset_functions import create_template_metadata
 from ..in_out.array_readers_and_writers import *
+from ..in_out.dataset_functions import create_template_metadata
+from ..in_out.xml_parameters import XmlParameters
 
 
 def insert_model_xml_level1_entry(model_xml_level0, key, value):
@@ -170,7 +170,7 @@ def finalize_longitudinal_atlas(model_xml_path, output_dir="output"):
     else:
         estimated_noise_std = np.loadtxt(estimated_noise_std_path)
     global_initial_noise_std_string = [
-        "{:.4f}".format(elt) for elt in estimated_noise_std
+        f"{elt:.4f}" for elt in estimated_noise_std
     ]
     model_xml_level0 = insert_model_xml_template_spec_entry(
         model_xml_level0, "noise-std", global_initial_noise_std_string
@@ -179,11 +179,11 @@ def finalize_longitudinal_atlas(model_xml_path, output_dir="output"):
     # Finalization.
     model_xml_path = "finalized_model.xml"
     doc = parseString(
-        (
+        
             et.tostring(model_xml_level0)
             .decode("utf-8")
             .replace("\n", "")
             .replace("\t", "")
-        )
+        
     ).toprettyxml()
     np.savetxt(model_xml_path, [doc], fmt="%s")

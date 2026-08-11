@@ -2,12 +2,12 @@ import os
 import shutil
 import time
 
+from ..core import default
 from ..core.estimators.gradient_ascent import GradientAscent
 from ..core.estimators.scipy_optimize import ScipyOptimize
+from ..core.models.longitudinal_atlas import LongitudinalAtlas
 from ..in_out.array_readers_and_writers import *
 from ..in_out.dataset_functions import create_dataset
-from ..core import default
-from ..core.models.longitudinal_atlas import LongitudinalAtlas
 
 
 def estimate_longitudinal_registration_for_subject(

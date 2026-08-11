@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 
 import deformetrica as dfca
+
 from . import unit_tests_data_dir
 
 

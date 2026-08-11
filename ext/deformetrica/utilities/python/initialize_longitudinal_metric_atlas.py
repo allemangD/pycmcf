@@ -3,34 +3,31 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + "../../../")
 
-import shutil
-import xml.etree.ElementTree as et
-
-from pydeformetrica.src.in_out.xml_parameters import XmlParameters
-from pydeformetrica.src.support.utilities.general_settings import Settings
-from src.in_out.array_readers_and_writers import *
 import xml.etree.ElementTree as et
 from xml.dom.minidom import parseString
+
+import torch
+from pydeformetrica.src.core.model_tools.manifolds.metric_learning_nets import (
+    ImageNet2d,
+    ImageNet2d128,
+    ImageNet3d,
+    ScalarNet,
+)
+from pydeformetrica.src.in_out.dataset_functions import (
+    read_and_create_image_dataset,
+    read_and_create_scalar_dataset,
+)
+from pydeformetrica.src.in_out.xml_parameters import XmlParameters
 from pydeformetrica.src.launch.estimate_longitudinal_metric_model import (
     estimate_longitudinal_metric_model,
 )
-from sklearn import datasets, linear_model
-from pydeformetrica.src.in_out.dataset_functions import (
-    read_and_create_scalar_dataset,
-    read_and_create_image_dataset,
-)
+from pydeformetrica.src.support.utilities.general_settings import Settings
+from sklearn import linear_model
 from sklearn.decomposition import PCA
-from pydeformetrica.src.core.model_tools.manifolds.metric_learning_nets import (
-    ScalarNet,
-    ImageNet2d,
-    ImageNet3d,
-    ImageNet2d128,
-)
-from torch import optim
-from torch.utils.data import TensorDataset, DataLoader
-import torch
+from src.in_out.array_readers_and_writers import *
+from torch import nn, optim
 from torch.autograd import Variable
-from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
 
 
 def _initialize_modulation_matrix_and_sources(dataset, p0, v0, number_of_sources):
@@ -494,7 +491,7 @@ if __name__ == "__main__":
 
         model_xml_path = "model_after_initialization.xml"
         doc = parseString(
-            (et.tostring(model_xml).decode("utf-8").replace("\n", "").replace("\t", ""))
+            et.tostring(model_xml).decode("utf-8").replace("\n", "").replace("\t", "")
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -662,7 +659,7 @@ if __name__ == "__main__":
                     break
 
             logger.info(
-                "Epoch {}/{}".format(epoch, nb_epochs),
+                f"Epoch {epoch}/{nb_epochs}",
                 "Train loss:",
                 train_loss,
                 "Test loss:",
@@ -767,7 +764,7 @@ if __name__ == "__main__":
 
         model_xml_path = "model_after_initialization.xml"
         doc = parseString(
-            (et.tostring(model_xml).decode("utf-8").replace("\n", "").replace("\t", ""))
+            et.tostring(model_xml).decode("utf-8").replace("\n", "").replace("\t", "")
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -795,6 +792,6 @@ if __name__ == "__main__":
 
         model_xml_path = "model_registration.xml"
         doc = parseString(
-            (et.tostring(model_xml).decode("utf-8").replace("\n", "").replace("\t", ""))
+            et.tostring(model_xml).decode("utf-8").replace("\n", "").replace("\t", "")
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")

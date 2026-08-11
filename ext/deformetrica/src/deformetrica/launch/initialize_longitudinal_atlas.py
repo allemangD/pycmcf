@@ -3,35 +3,35 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + "../../../")
 
+import math
+import shutil
+import warnings
+import xml.etree.ElementTree as et
+from decimal import Decimal
+from xml.dom.minidom import parseString
+
+import torch
+from scipy.stats import norm, truncnorm
+from sklearn.decomposition import FastICA
 from torch.autograd import Variable
 
-import warnings
-from decimal import Decimal
-import shutil
-import math
-from sklearn.decomposition import PCA, FastICA
-import torch
-import xml.etree.ElementTree as et
-from xml.dom.minidom import parseString
-from scipy.stats import norm, truncnorm
-
+from ..api.deformetrica import Deformetrica
 from ..core import default
+from ..core.model_tools.deformations.exponential import Exponential
+from ..core.model_tools.deformations.geodesic import Geodesic
+from ..core.observations.deformable_objects.deformable_multi_object import (
+    DeformableMultiObject,
+)
+from ..in_out.array_readers_and_writers import *
+from ..in_out.dataset_functions import create_template_metadata
+from ..in_out.deformable_object_reader import DeformableObjectReader
 from ..in_out.xml_parameters import (
     XmlParameters,
     get_dataset_specifications,
     get_estimator_options,
     get_model_options,
 )
-from ..in_out.dataset_functions import create_template_metadata
-from ..core.model_tools.deformations.exponential import Exponential
-from ..core.model_tools.deformations.geodesic import Geodesic
-from ..in_out.array_readers_and_writers import *
 from ..support import kernels as kernel_factory
-from ..core.observations.deformable_objects.deformable_multi_object import (
-    DeformableMultiObject,
-)
-from ..in_out.deformable_object_reader import DeformableObjectReader
-from ..api.deformetrica import Deformetrica
 
 
 def estimate_bayesian_atlas(deformetrica, xml_parameters):
@@ -531,7 +531,7 @@ def initialize_longitudinal_atlas(
 
         # Convert the noise std float values to formatted strings.
         global_objects_noise_std_string = [
-            "{:.4f}".format(elt) for elt in global_objects_noise_std
+            f"{elt:.4f}" for elt in global_objects_noise_std
         ]
 
         # If necessary, copy the estimated control points to the data folder.
@@ -569,12 +569,12 @@ def initialize_longitudinal_atlas(
             os.path.dirname(preprocessings_folder), "initialized_model.xml"
         )
         doc = parseString(
-            (
+            
                 et.tostring(model_xml_level0)
                 .decode("utf-8")
                 .replace("\n", "")
                 .replace("\t", "")
-            )
+            
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -738,12 +738,12 @@ def initialize_longitudinal_atlas(
             os.path.dirname(preprocessings_folder), "initialized_model.xml"
         )
         doc = parseString(
-            (
+            
                 et.tostring(model_xml_level0)
                 .decode("utf-8")
                 .replace("\n", "")
                 .replace("\t", "")
-            )
+            
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -970,12 +970,12 @@ def initialize_longitudinal_atlas(
         os.path.dirname(preprocessings_folder), "initialized_model.xml"
     )
     doc = parseString(
-        (
+        
             et.tostring(model_xml_level0)
             .decode("utf-8")
             .replace("\n", "")
             .replace("\t", "")
-        )
+        
     ).toprettyxml()
     np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -1157,12 +1157,12 @@ def initialize_longitudinal_atlas(
             os.path.dirname(preprocessings_folder), "initialized_model.xml"
         )
         doc = parseString(
-            (
+            
                 et.tostring(model_xml_level0)
                 .decode("utf-8")
                 .replace("\n", "")
                 .replace("\t", "")
-            )
+            
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -1309,12 +1309,12 @@ def initialize_longitudinal_atlas(
             os.path.dirname(preprocessings_folder), "initialized_model.xml"
         )
         doc = parseString(
-            (
+            
                 et.tostring(model_xml_level0)
                 .decode("utf-8")
                 .replace("\n", "")
                 .replace("\t", "")
-            )
+            
         ).toprettyxml()
         np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -1496,12 +1496,12 @@ def initialize_longitudinal_atlas(
         os.path.dirname(preprocessings_folder), "initialized_model.xml"
     )
     doc = parseString(
-        (
+        
             et.tostring(model_xml_level0)
             .decode("utf-8")
             .replace("\n", "")
             .replace("\t", "")
-        )
+        
     ).toprettyxml()
     np.savetxt(model_xml_path, [doc], fmt="%s")
 
@@ -1664,7 +1664,7 @@ def initialize_longitudinal_atlas(
     # Noise variance.
     global_initial_noise_variance = model.get_noise_variance()
     global_initial_noise_std_string = [
-        "{:.4f}".format(math.sqrt(elt)) for elt in global_initial_noise_variance
+        f"{math.sqrt(elt):.4f}" for elt in global_initial_noise_variance
     ]
     model_xml_level0 = insert_model_xml_template_spec_entry(
         model_xml_level0, "noise-std", global_initial_noise_std_string
@@ -1715,11 +1715,11 @@ def initialize_longitudinal_atlas(
         os.path.dirname(preprocessings_folder), "initialized_model.xml"
     )
     doc = parseString(
-        (
+        
             et.tostring(model_xml_level0)
             .decode("utf-8")
             .replace("\n", "")
             .replace("\t", "")
-        )
+        
     ).toprettyxml()
     np.savetxt(model_xml_path, [doc], fmt="%s")

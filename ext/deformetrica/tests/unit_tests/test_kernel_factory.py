@@ -2,13 +2,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-import deformetrica as dfca
-import pykeops
-
 import pickle
 import unittest
-import torch
+
 import numpy as np
+import pykeops
+import torch
+
+import deformetrica as dfca
 
 
 class KernelFactoryTest(unittest.TestCase):

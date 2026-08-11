@@ -1,14 +1,13 @@
+import logging
 import math
+
 import torch
 
 from ...in_out.array_readers_and_writers import *
 from ...in_out.image_functions import (
-    points_to_voxels_transform,
     metric_to_image_radial_length,
+    points_to_voxels_transform,
 )
-
-
-import logging
 
 logger = logging.getLogger(__name__)
 

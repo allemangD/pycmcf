@@ -1,3 +1,4 @@
+import logging
 import os.path
 import warnings
 
@@ -6,8 +7,6 @@ import torch
 from torch.autograd import Variable
 
 from ....in_out.array_readers_and_writers import *
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -90,12 +89,8 @@ class GenericGeodesic:
                     self.backward_exponential.number_of_time_points - 1
                 )
                 j = int((time_np - self.tmin) / dt) + 1
-                assert times[j - 1] <= time_np + 1e-3, "{} {} {}".format(
-                    j, time_np, times[j - 1]
-                )
-                assert times[j] + 1e-3 >= time_np, "{} {} {}".format(
-                    j, time_np, times[j]
-                )
+                assert times[j - 1] <= time_np + 1e-3, f"{j} {time_np} {times[j - 1]}"
+                assert times[j] + 1e-3 >= time_np, f"{j} {time_np} {times[j]}"
         else:
             if self.forward_exponential.number_of_time_points <= 2:
                 j = len(times) - 1
@@ -110,9 +105,7 @@ class GenericGeodesic:
                 )
 
                 assert times[j - 1] <= time_np
-                assert times[j] >= time_np, "{}, {}, {}, {}".format(
-                    times[j], time_np, len(times), j
-                )
+                assert times[j] >= time_np, f"{times[j]}, {time_np}, {len(times)}, {j}"
 
         weight_left = (times[j] - t) / (times[j] - times[j - 1])
         weight_right = (t - times[j - 1]) / (times[j] - times[j - 1])

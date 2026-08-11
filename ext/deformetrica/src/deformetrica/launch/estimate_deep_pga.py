@@ -3,35 +3,32 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + "../../../")
 
-import torch
-import torchvision
-from torch import nn
-from torch import optim
-from torch.utils.data import TensorDataset, DataLoader
-
-import numpy as np
 import time
 
-# Estimators
+import numpy as np
+import torch
+import torchvision
+from sklearn.decomposition import PCA
+from sklearn.metrics import mean_squared_error
+from torch import nn, optim
+from torch.utils.data import DataLoader, TensorDataset
 
+from ..core.estimator_tools.samplers.srw_mhwg_sampler import SrwMhwgSampler
+
+# Estimators
 from ..core.estimators.mcmc_saem import McmcSaem
 from ..core.estimators.scipy_optimize import ScipyOptimize
-from ..core.estimators.gradient_ascent import GradientAscent
-from ..core.estimator_tools.samplers.srw_mhwg_sampler import SrwMhwgSampler
-from ..support.utilities.general_settings import Settings
-from ..support.probability_distributions.multi_scalar_normal_distribution import (
-    MultiScalarNormalDistribution,
-)
-from ..core.observations.datasets.longitudinal_dataset import LongitudinalDataset
 from ..core.model_tools.manifolds.metric_learning_nets import MnistNet, ScalarNet
 from ..core.models.deep_pga import DeepPga
+from ..core.observations.datasets.longitudinal_dataset import LongitudinalDataset
 from ..core.observations.deformable_objects.deformable_multi_object import (
     DeformableMultiObject,
 )
 from ..core.observations.deformable_objects.image import Image
-
-from sklearn.metrics import mean_squared_error
-from sklearn.decomposition import PCA
+from ..support.probability_distributions.multi_scalar_normal_distribution import (
+    MultiScalarNormalDistribution,
+)
+from ..support.utilities.general_settings import Settings
 
 # Runs the deep pga model on 1000 randomly extracted digits for mnist, for varying latent space dimensions.
 # Experimental for now.
@@ -157,7 +154,7 @@ def run_model_on_MNIST(latent_space_dimension):
 
         train_loss /= nb_train_batches
 
-        logger.info("Epoch {}/{}".format(epoch, nb_epochs), "Train loss:", train_loss)
+        logger.info(f"Epoch {epoch}/{nb_epochs}", "Train loss:", train_loss)
 
     noise_variance = train_loss / (28 * 28)
 
@@ -264,7 +261,7 @@ def run_on_cylinder():
 
         train_loss /= nb_train_batches
 
-        logger.info("Epoch {}/{}".format(epoch, nb_epochs), "Train loss:", train_loss)
+        logger.info(f"Epoch {epoch}/{nb_epochs}", "Train loss:", train_loss)
 
     noise_variance = train_loss / (28 * 28)
 
@@ -276,7 +273,6 @@ def run_on_cylinder():
         noise_variance,
     )
 
-    return
 
 
 def register_test_to_model(model, test_dataset, output_dir, latent_space_dimension):

@@ -41,8 +41,7 @@ def write_3D_array(array, output_dir, name):
         for elt in array:
             f.write("\n")
             for elt1 in elt:
-                for elt2 in elt1:
-                    f.write(str(elt2) + " ")
+                f.writelines(str(elt2) + " " for elt2 in elt1)
                 f.write("\n")
 
 
@@ -62,8 +61,7 @@ def write_2D_list(input_list, output_dir, name):
     save_name = os.path.join(output_dir, name)
     with open(save_name, "w") as f:
         for elt_i in input_list:
-            for elt_i_j in elt_i:
-                f.write(str(elt_i_j) + " ")
+            f.writelines(str(elt_i_j) + " " for elt_i_j in elt_i)
             f.write("\n")
 
 
@@ -93,8 +91,7 @@ def write_3D_list(list, output_dir, name):
     with open(save_name, "w") as f:
         for elt_i in list:
             for elt_i_j in elt_i:
-                for elt_i_j_k in elt_i_j:
-                    f.write(str(elt_i_j_k) + " ")
+                f.writelines(str(elt_i_j_k) + " " for elt_i_j_k in elt_i_j)
                 if len(elt_i_j) > 1:
                     f.write("\n")
             f.write("\n\n")

@@ -1,11 +1,11 @@
+import logging
+
 import numpy as np
 import torch
 from torch.autograd import Variable
 
 from ....core.model_tools.manifolds.exponential_interface import ExponentialInterface
 from ....support.utilities.general_settings import Settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -151,8 +151,7 @@ class ParametricExponential(ExponentialInterface):
         # Positivity for each diagonal coefficient.
         for i in range(len(metric_parameters)):
             for j in diagonal_indices:
-                if metric_parameters[i][j] < 0:
-                    metric_parameters[i][j] = 0
+                metric_parameters[i][j] = max(metric_parameters[i][j], 0)
 
         # Sum to one for each diagonal coefficient.
         for j in diagonal_indices:

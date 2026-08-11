@@ -27,7 +27,6 @@ class InverseWishartDistribution:
         raise RuntimeError(
             'The "sample" method is not implemented yet for the inverse Wishart distribution.'
         )
-        pass
 
     def compute_log_likelihood(self, observation_inverse):
         """

@@ -1,16 +1,14 @@
+import logging
 import os
 import unittest
 
+import numpy as np
 import torch
+from torch.autograd import Variable
 
 import deformetrica as dfca
 
-from torch.autograd import Variable
-import numpy as np
-
 from . import unit_tests_data_dir
-
-import logging
 
 logger = logging.getLogger(__name__)
 

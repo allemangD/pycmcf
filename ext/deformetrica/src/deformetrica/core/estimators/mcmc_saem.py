@@ -1,6 +1,6 @@
+import _pickle as pickle
 import logging
 import os.path
-import _pickle as pickle
 
 from ...core import default
 from ...core.estimator_tools.samplers.srw_mhwg_sampler import SrwMhwgSampler

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
 
 """
@@ -20,9 +19,8 @@ import warnings
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
-
 import support.kernels as kernel_factory
+import torch
 from benchmark.memory_profile_tool import (
     start_memory_profile,
     stop_and_clear_memory_profile,
@@ -208,11 +206,11 @@ def build_setup():
 
     setups = []
     for k, m in zip(kernels, method_to_run):
-        bench_setup = """
+        bench_setup = f"""
 from __main__ import BenchRunner
 import torch
-bench = BenchRunner({kernel}, {method_to_run})
-""".format(kernel=k, method_to_run=m)
+bench = BenchRunner({k}, {m})
+"""
 
         setups.append({"kernel": k, "method_to_run": m, "bench_setup": bench_setup})
     return setups, kernels, method_to_run

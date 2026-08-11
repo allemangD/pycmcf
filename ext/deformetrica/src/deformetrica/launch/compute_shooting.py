@@ -1,3 +1,5 @@
+import logging
+
 import torch
 
 from ..core import default
@@ -8,8 +10,6 @@ from ..core.observations.deformable_objects.deformable_multi_object import (
 from ..in_out.array_readers_and_writers import *
 from ..in_out.dataset_functions import create_template_metadata
 from ..support import kernels as kernel_factory
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -118,14 +118,10 @@ def compute_shooting(
         geodesic.tmin = tmin
 
     assert geodesic.tmax >= geodesic.t0, (
-        "The max time {} for the shooting should be larger than t0 {}".format(
-            geodesic.tmax, geodesic.t0
-        )
+        f"The max time {geodesic.tmax} for the shooting should be larger than t0 {geodesic.t0}"
     )
     assert geodesic.tmin <= geodesic.t0, (
-        "The min time for the shooting should be lower than t0.".format(
-            geodesic.tmin, geodesic.t0
-        )
+        "The min time for the shooting should be lower than t0."
     )
 
     geodesic.set_control_points_t0(control_points_torch)

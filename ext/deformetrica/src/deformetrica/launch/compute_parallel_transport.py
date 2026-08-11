@@ -1,5 +1,7 @@
-import torch
+import logging
 import math
+
+import torch
 
 from ..core import default
 from ..core.model_tools.deformations.exponential import Exponential
@@ -9,10 +11,8 @@ from ..core.observations.deformable_objects.deformable_multi_object import (
 )
 from ..in_out.array_readers_and_writers import *
 from ..in_out.dataset_functions import create_template_metadata
-from ..support import utilities
 from ..support import kernels as kernel_factory
-
-import logging
+from ..support import utilities
 
 logger = logging.getLogger(__name__)
 
@@ -210,17 +210,17 @@ def compute_parallel_transport(
         write_2D_array(
             cp.detach().cpu().numpy(),
             output_dir,
-            "ControlPoints_tp_{0:d}__age_{1:.2f}.txt".format(i, time),
+            f"ControlPoints_tp_{i:d}__age_{time:.2f}.txt",
         )
         write_3D_array(
             mom.detach().cpu().numpy(),
             output_dir,
-            "Momenta_tp_{0:d}__age_{1:.2f}.txt".format(i, time),
+            f"Momenta_tp_{i:d}__age_{time:.2f}.txt",
         )
         write_3D_array(
             transported_mom.detach().cpu().numpy(),
             output_dir,
-            "Transported_Momenta_tp_{0:d}__age_{1:.2f}.txt".format(i, time),
+            f"Transported_Momenta_tp_{i:d}__age_{time:.2f}.txt",
         )
 
         deformed_points = geodesic.get_template_points(time)
@@ -236,7 +236,7 @@ def compute_parallel_transport(
 
         names = [
             objects_name[k]
-            + "_parallel_curve_tp_{0:d}__age_{1:.2f}".format(i, time)
+            + f"_parallel_curve_tp_{i:d}__age_{time:.2f}"
             + objects_name_extension[k]
             for k in range(len(objects_name))
         ]

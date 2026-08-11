@@ -1,5 +1,3 @@
-import os.path
-import torch
 
 from ...support.utilities.singleton_pattern import Singleton
 

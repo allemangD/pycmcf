@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
 
 """
@@ -12,31 +11,28 @@ Benchmark CPU vs GPU on small (500 points) and large (5000 points) meshes.
 
 """
 
+import gc
+import itertools
 import os
 import sys
 import warnings
 
-import gc
 import matplotlib.pyplot as plt
 import numpy as np
 import support.kernels as kernel_factory
 import torch
-import itertools
-
-from memory_profile_tool import start_memory_profile, stop_and_clear_memory_profile
-from in_out.deformable_object_reader import DeformableObjectReader
-from core.model_tools.attachments.multi_object_attachment import MultiObjectAttachment
-from core.observations.deformable_objects.deformable_multi_object import (
-    DeformableMultiObject,
-)
-from support.utilities.general_settings import Settings
+from core.model_tools.deformations.exponential import Exponential
 from core.models.model_functions import (
     create_regular_grid_of_points,
     remove_useless_control_points,
 )
-from core.model_tools.deformations.exponential import Exponential
-from core.observations.deformable_objects.landmarks.surface_mesh import SurfaceMesh
+from core.observations.deformable_objects.deformable_multi_object import (
+    DeformableMultiObject,
+)
 from core.observations.deformable_objects.image import Image
+from core.observations.deformable_objects.landmarks.surface_mesh import SurfaceMesh
+from in_out.deformable_object_reader import DeformableObjectReader
+from memory_profile_tool import start_memory_profile, stop_and_clear_memory_profile
 
 path_to_small_surface_mesh_1 = "data/landmark/surface_mesh/hippocampus_500_cells_1.vtk"
 path_to_small_surface_mesh_2 = "data/landmark/surface_mesh/hippocampus_500_cells_2.vtk"
@@ -249,11 +245,11 @@ def build_setup():
 
     setups = []
     for k, m in zip(kernels, method_to_run):
-        bench_setup = """
+        bench_setup = f"""
 from __main__ import BenchRunner
 import torch
-bench = BenchRunner({kernel}, {method_to_run})
-""".format(kernel=k, method_to_run=m)
+bench = BenchRunner({k}, {m})
+"""
 
         setups.append({"kernel": k, "method_to_run": m, "bench_setup": bench_setup})
     return setups, kernels, method_to_run

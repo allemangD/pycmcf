@@ -3,7 +3,7 @@ import os
 import warnings
 import xml.etree.ElementTree as et
 
-from ..core import default, GpuMode
+from ..core import GpuMode, default
 from ..support import utilities
 
 logger = logging.getLogger(__name__)

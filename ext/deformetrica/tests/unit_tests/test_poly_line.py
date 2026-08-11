@@ -1,11 +1,10 @@
 import os
+import shutil
 import unittest
 
 import numpy as np
 
 import deformetrica as dfca
-
-import shutil
 
 # Tests are done both in 2 and 3d.
 from . import unit_tests_data_dir

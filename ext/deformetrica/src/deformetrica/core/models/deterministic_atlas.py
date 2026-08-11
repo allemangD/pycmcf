@@ -3,7 +3,6 @@ import time
 
 import torch
 
-from ...support import kernels as kernel_factory
 from ...core import default
 from ...core.model_tools.deformations.exponential import Exponential
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
@@ -13,6 +12,7 @@ from ...core.observations.deformable_objects.deformable_multi_object import (
 )
 from ...in_out.array_readers_and_writers import *
 from ...in_out.dataset_functions import create_template_metadata
+from ...support import kernels as kernel_factory
 from ...support import utilities
 
 logger = logging.getLogger(__name__)

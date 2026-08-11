@@ -2,9 +2,11 @@ import os
 import tempfile
 import unittest
 
-from . import unit_tests_data_dir
-import deformetrica as dfca
 import numpy as np
+
+import deformetrica as dfca
+
+from . import unit_tests_data_dir
 
 
 class ArrayReadersAndWritersTests(unittest.TestCase):
@@ -16,7 +18,6 @@ class ArrayReadersAndWritersTests(unittest.TestCase):
         self.test_output_file_path = os.path.join(
             tempfile.gettempdir(), "test_write_3D_array.txt"
         )
-        pass
 
     def tearDown(self):
         # remove created file

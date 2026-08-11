@@ -1,13 +1,11 @@
+import logging
 import time
 import warnings
-
 
 from ....core import default
 from ....core.model_tools.deformations.exponential import Exponential
 from ....in_out.array_readers_and_writers import *
 from ....support import utilities
-
-import logging
 
 logger = logging.getLogger(__name__)
 

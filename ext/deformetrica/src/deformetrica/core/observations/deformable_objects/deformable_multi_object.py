@@ -1,6 +1,6 @@
-import numpy as np
-
 import logging
+
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -176,10 +176,8 @@ class DeformableMultiObject:
         self.bounding_box = self.object_list[0].bounding_box
         for k in range(1, self.number_of_objects):
             for d in range(dimension):
-                if self.object_list[k].bounding_box[d, 0] < self.bounding_box[d, 0]:
-                    self.bounding_box[d, 0] = self.object_list[k].bounding_box[d, 0]
-                if self.object_list[k].bounding_box[d, 1] > self.bounding_box[d, 1]:
-                    self.bounding_box[d, 1] = self.object_list[k].bounding_box[d, 1]
+                self.bounding_box[d, 0] = min(self.bounding_box[d, 0], self.object_list[k].bounding_box[d, 0])
+                self.bounding_box[d, 1] = max(self.bounding_box[d, 1], self.object_list[k].bounding_box[d, 1])
 
     def write(self, output_dir, names, data=None):
         """

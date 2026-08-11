@@ -3,7 +3,6 @@ import unittest
 
 import numpy as np
 
-
 import deformetrica as dfca
 
 # Tests are done both in 2d and 3d.

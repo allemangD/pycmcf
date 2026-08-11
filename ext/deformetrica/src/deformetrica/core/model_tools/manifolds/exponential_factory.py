@@ -1,9 +1,9 @@
+import logging
+
 from ....core.model_tools.manifolds.euclidean_exponential import EuclideanExponential
 from ....core.model_tools.manifolds.fourier_exponential import FourierExponential
 from ....core.model_tools.manifolds.logistic_exponential import LogisticExponential
 from ....core.model_tools.manifolds.parametric_exponential import ParametricExponential
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +63,13 @@ class ExponentialFactory:
 
 
 if __name__ == "__main__":
-    import torch
+    import matplotlib.pyplot as plt
     import numpy as np
+    import torch
     from torch.autograd import Variable
+
     from deformetrica.core.model_tools.manifolds.generic_geodesic import GenericGeodesic
     from deformetrica.support.utilities.general_settings import Settings
-    import matplotlib.pyplot as plt
 
     Settings().dimension = 2
     factory = ExponentialFactory()

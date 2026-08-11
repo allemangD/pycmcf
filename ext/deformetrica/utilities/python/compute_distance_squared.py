@@ -2,16 +2,15 @@ import os
 import sys
 
 import torch
-from torch.autograd import Variable
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + "../../../")
 
-from in_out.deformable_object_reader import DeformableObjectReader
+import support.kernels as kernel_factory
+from core.model_tools.attachments.multi_object_attachment import MultiObjectAttachment
 from core.observations.deformable_objects.deformable_multi_object import (
     DeformableMultiObject,
 )
-from core.model_tools.attachments.multi_object_attachment import MultiObjectAttachment
-import support.kernels as kernel_factory
+from in_out.deformable_object_reader import DeformableObjectReader
 
 
 def compute_distance_squared(

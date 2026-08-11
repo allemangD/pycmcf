@@ -1,10 +1,10 @@
 import unittest
+
 import numpy as np
 import torch
+from torch.autograd import Variable
 
 import deformetrica as dfca
-
-from torch.autograd import Variable
 
 
 class ShootingTests(unittest.TestCase):

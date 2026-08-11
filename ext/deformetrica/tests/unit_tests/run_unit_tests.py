@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
 import sys
 import unittest
@@ -9,10 +8,10 @@ from tests.unit_tests.test_array_readers_and_writers import ArrayReadersAndWrite
 from tests.unit_tests.test_attachments import DistanceTests
 from tests.unit_tests.test_auto_dimension import AutomaticDimensionDetectionTests
 from tests.unit_tests.test_kernel_factory import (
+    KeopsKernelTest,
     KeopsVersusCuda,
     KernelFactoryTest,
     TorchKernelTest,
-    KeopsKernelTest,
 )
 from tests.unit_tests.test_parallel_transport import ParallelTransportTests
 from tests.unit_tests.test_point_cloud import PointCloudTests

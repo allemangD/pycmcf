@@ -1,11 +1,11 @@
+import logging
+
 import numpy as np
 import torch
 
 from .....core import default
 from .....core.observations.deformable_objects.landmarks.landmark import Landmark
 from .....support import utilities
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,7 @@ class SurfaceMesh(Landmark):
 
         if len(triangles_to_keep) < len(normals):
             logger.info(
-                "I detected {} null area triangles, I am removing them".format(
-                    len(normals) - len(triangles_to_keep)
-                )
+                f"I detected {len(normals) - len(triangles_to_keep)} null area triangles, I am removing them"
             )
             new_connectivity = self.connectivity[triangles_to_keep.view(-1)]
             new_connectivity = np.copy(new_connectivity)

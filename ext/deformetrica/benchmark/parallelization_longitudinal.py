@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 import gc
-
-import pykeops
-from api import Deformetrica
-from core import default
-from support import utilities
-from unit_tests import example_data_dir, sandbox_data_dir
 import os
 import time
-import torch
+
 import numpy as np
+import pykeops
+import torch
+from api import Deformetrica
+from support import utilities
+from unit_tests import sandbox_data_dir
 
 torch.manual_seed(42)
 np.random.seed(42)

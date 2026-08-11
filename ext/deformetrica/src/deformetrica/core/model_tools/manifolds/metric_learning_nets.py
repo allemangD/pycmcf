@@ -1,18 +1,18 @@
+import logging
+
 import numpy as np
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 from ....support.utilities.general_settings import Settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 class AbstractNet(nn.Module):
     def __init__(self):
-        super(AbstractNet, self).__init__()
+        super().__init__()
         self.number_of_parameters = None
 
     def update(self):
@@ -28,7 +28,7 @@ class AbstractNet(nn.Module):
         net_name = str(type(self))
         net_name = net_name[net_name.find("_nets.") + 6 : net_name.find(">") - 1]
         logger.info(
-            "The nn {} has".format(net_name), self.number_of_parameters, "weights."
+            f"The nn {net_name} has", self.number_of_parameters, "weights."
         )
 
     def forward(self, x):
@@ -129,7 +129,7 @@ class AbstractNet(nn.Module):
                     a, b = np_weight.shape
                     rank = np.linalg.matrix_rank(layer.weight.data.numpy())
                     assert rank == min(a, b), (
-                        "Weight of layer does not have full rank {}".format(layer)
+                        f"Weight of layer does not have full rank {layer}"
                     )
             except AttributeError:
                 pass
@@ -137,7 +137,7 @@ class AbstractNet(nn.Module):
 
 class ScalarNet(AbstractNet):
     def __init__(self, in_dimension=2, out_dimension=4):
-        super(ScalarNet, self).__init__()
+        super().__init__()
         self.layers = nn.ModuleList(
             [
                 nn.Linear(in_dimension, in_dimension),
@@ -160,7 +160,7 @@ class ScalarNet(AbstractNet):
 # This net automatically outputs 64 x 64 images. (to be improved)
 class ImageNet2d(AbstractNet):
     def __init__(self, in_dimension=2):
-        super(ImageNet2d, self).__init__()
+        super().__init__()
         ngf = 2
         self.layers = nn.ModuleList(
             [
@@ -210,7 +210,7 @@ class ImageNet2d(AbstractNet):
 # This net automatically outputs 128 x 128 images. (to be improved)
 class ImageNet2d128(AbstractNet):
     def __init__(self, in_dimension=2):
-        super(ImageNet2d128, self).__init__()
+        super().__init__()
         ngf = 2
         self.layers = nn.ModuleList(
             [
@@ -263,7 +263,7 @@ class ImageNet2d128(AbstractNet):
 # This net automatically outputs 64 x 64 x 64 images. (to be improved)
 class ImageNet3d(AbstractNet):
     def __init__(self, in_dimension=2):
-        super(ImageNet3d, self).__init__()
+        super().__init__()
         ngf = 2
         self.layers = nn.ModuleList(
             [
@@ -300,7 +300,7 @@ class ImageNet3d(AbstractNet):
 # This net automatically outputs 28 x 28 images. (to be improved)
 class MnistNet(AbstractNet):
     def __init__(self, in_dimension=2):
-        super(MnistNet, self).__init__()
+        super().__init__()
         self.layers = nn.ModuleList(
             [
                 nn.Linear(in_dimension, 8 * 2 * 2),
@@ -344,7 +344,7 @@ class MnistNet(AbstractNet):
 
 class DiffeoNet(AbstractNet):
     def __init__(self, in_dimension=10, nb_cp=10):
-        super(DiffeoNet, self).__init__()
+        super().__init__()
         self.nb_cp = nb_cp
         self.fc1 = nn.Linear(in_dimension, 2 * nb_cp * Settings().dimension)
         self.elu1 = nn.ELU()
@@ -366,7 +366,7 @@ class DiffeoNet(AbstractNet):
 
 class DiffeoMnistDConvNet(AbstractNet):
     def __init__(self, in_dimension=10):
-        super(DiffeoMnistDConvNet, self).__init__()
+        super().__init__()
         self.deconvolutions = nn.ModuleList(
             [
                 nn.ConvTranspose2d(in_dimension, 16, stride=2, kernel_size=2),
@@ -388,7 +388,7 @@ class DiffeoMnistDConvNet(AbstractNet):
 
 class MnistDiscrimator(AbstractNet):
     def __init__(self, noise_in_dimension=10):
-        super(MnistDiscrimator, self).__init__()
+        super().__init__()
         self.convolution = nn.ModuleList(
             [
                 nn.Conv2d(1, 8, kernel_size=3, stride=3),
@@ -412,7 +412,7 @@ class MnistDiscrimator(AbstractNet):
 
 class MnistEncoder(AbstractNet):
     def __init__(self, out_dimension=10):
-        super(MnistEncoder, self).__init__()
+        super().__init__()
         self.convolution = nn.ModuleList(
             [
                 nn.Conv2d(1, 4, kernel_size=2, stride=2),

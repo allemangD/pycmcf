@@ -1,12 +1,11 @@
 import os.path
 import time
 import warnings
+from copy import deepcopy
 
 import numpy as np
 import torch
 from torch.autograd import Variable
-
-from copy import deepcopy
 
 from ..core.estimator_tools.samplers.srw_mhwg_sampler import SrwMhwgSampler
 from ..core.estimators.gradient_ascent import GradientAscent
@@ -22,8 +21,8 @@ from ..core.models.longitudinal_metric_learning import LongitudinalMetricLearnin
 from ..core.models.model_functions import create_regular_grid_of_points
 from ..in_out.array_readers_and_writers import read_2D_array
 from ..in_out.dataset_functions import (
-    read_and_create_scalar_dataset,
     read_and_create_image_dataset,
+    read_and_create_scalar_dataset,
 )
 from ..support.probability_distributions.multi_scalar_normal_distribution import (
     MultiScalarNormalDistribution,

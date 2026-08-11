@@ -20,7 +20,6 @@ class MultiScalarInverseWishartDistribution:
         raise RuntimeError(
             'The "sample" method is not implemented yet for the multi scalar inverse Wishart distribution.'
         )
-        pass
 
     def compute_log_likelihood(self, observations):
         """

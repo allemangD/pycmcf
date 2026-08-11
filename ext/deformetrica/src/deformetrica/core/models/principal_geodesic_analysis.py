@@ -1,31 +1,30 @@
-import torch
+import logging
 
 # import api
 from copy import deepcopy
 
+import torch
+
 from ...core import default
 from ...core.model_tools.deformations.exponential import Exponential
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
+from ...core.models.model_functions import initialize_control_points
 from ...core.observations.deformable_objects.deformable_multi_object import (
     DeformableMultiObject,
 )
 from ...in_out.array_readers_and_writers import *
 from ...in_out.dataset_functions import (
-    create_template_metadata,
     compute_noise_dimension,
+    create_template_metadata,
 )
+from ...support import kernels as kernel_factory
 from ...support import utilities
-from ...support.probability_distributions.multi_scalar_normal_distribution import (
-    MultiScalarNormalDistribution,
-)
-
 from ...support.probability_distributions.multi_scalar_inverse_wishart_distribution import (
     MultiScalarInverseWishartDistribution,
 )
-from ...support import kernels as kernel_factory
-from ...core.models.model_functions import initialize_control_points
-
-import logging
+from ...support.probability_distributions.multi_scalar_normal_distribution import (
+    MultiScalarNormalDistribution,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -175,9 +174,7 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
         # Principal directions
         if initial_principal_directions is not None:
             logger.info(
-                ">> Loading principal directions from file {}".format(
-                    initial_principal_directions
-                )
+                f">> Loading principal directions from file {initial_principal_directions}"
             )
             self.fixed_effects["principal_directions"] = read_2D_array(
                 initial_principal_directions
@@ -993,9 +990,7 @@ class PrincipalGeodesicAnalysis(AbstractStatisticalModel):
                 for k, (object_name, object_extension) in enumerate(
                     zip(self.objects_name, self.objects_name_extension)
                 ):
-                    name = self.name + "__PrincipalDirection__{}_{}{}".format(
-                        i, l, object_extension
-                    )
+                    name = self.name + f"__PrincipalDirection__{i}_{l}{object_extension}"
                     names.append(name)
 
                 self.template.write(

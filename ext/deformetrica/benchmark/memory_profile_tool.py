@@ -1,12 +1,7 @@
-import resource
-import sys
 import time
 from threading import Thread
+
 from memory_profiler import memory_usage
-
-import GPUtil
-import torch
-
 
 # _cudart = ctypes.CDLL('libcudart.so')
 #

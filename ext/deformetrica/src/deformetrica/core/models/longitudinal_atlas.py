@@ -8,29 +8,29 @@ import warnings
 import torch
 from scipy.stats import norm
 
-from ...support import kernels as kernel_factory
-from ...core import default, GpuMode
+from ...core import GpuMode, default
 from ...core.model_tools.deformations.spatiotemporal_reference_frame import (
     SpatiotemporalReferenceFrame,
 )
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
 from ...core.models.model_functions import (
-    initialize_control_points,
-    initialize_momenta,
-    initialize_modulation_matrix,
-    initialize_sources,
-    initialize_onset_ages,
     initialize_accelerations,
+    initialize_control_points,
     initialize_covariance_momenta_inverse,
+    initialize_modulation_matrix,
+    initialize_momenta,
+    initialize_onset_ages,
+    initialize_sources,
 )
 from ...core.observations.deformable_objects.deformable_multi_object import (
     DeformableMultiObject,
 )
 from ...in_out.array_readers_and_writers import *
 from ...in_out.dataset_functions import (
-    create_template_metadata,
     compute_noise_dimension,
+    create_template_metadata,
 )
+from ...support import kernels as kernel_factory
 from ...support import utilities
 from ...support.probability_distributions.multi_scalar_inverse_wishart_distribution import (
     MultiScalarInverseWishartDistribution,
@@ -949,7 +949,7 @@ class LongitudinalAtlas(AbstractStatisticalModel):
                 # for key, value in template_data.items():
                 #     gradient[key] = value.grad
 
-                if self.use_sobolev_gradient and "landmark_points" in gradient.keys():
+                if self.use_sobolev_gradient and "landmark_points" in gradient:
                     gradient["landmark_points"] = self.sobolev_kernel.convolve(
                         template_data["landmark_points"].detach(),
                         template_data["landmark_points"].detach(),

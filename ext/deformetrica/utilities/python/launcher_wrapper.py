@@ -1,9 +1,9 @@
 import os
 
-from launch.compute_shooting import compute_shooting
-from in_out.xml_parameters import XmlParameters
-from support.utilities.general_settings import Settings
 from in_out.array_readers_and_writers import *
+from in_out.xml_parameters import XmlParameters
+from launch.compute_shooting import compute_shooting
+from support.utilities.general_settings import Settings
 
 # Functions used to script deformetrica. WORK IN PROGRESS, lots of parameters are hardcoded, cuda not managed...
 

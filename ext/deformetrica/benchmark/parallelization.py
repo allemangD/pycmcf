@@ -1,15 +1,12 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 import gc
-
-import pykeops
-from api import Deformetrica
-import support.utilities as utilities
-from unit_tests import example_data_dir, sandbox_data_dir
 import os
 import time
-import torch
 
+import pykeops
+import torch
+from api import Deformetrica
+from support import utilities
 
 data_dir = os.path.join(os.path.dirname(__file__), "data")
 

@@ -1,9 +1,8 @@
+import logging
 import os.path
 
 import numpy as np
 import torch
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -75,9 +74,7 @@ class Landmark:
             points = self.points
 
         with open(os.path.join(output_dir, name), "w", encoding="utf-8") as f:
-            s = "# vtk DataFile Version 3.0\nvtk output\nASCII\nDATASET POLYDATA\nPOINTS {} float\n".format(
-                len(self.points)
-            )
+            s = f"# vtk DataFile Version 3.0\nvtk output\nASCII\nDATASET POLYDATA\nPOINTS {len(self.points)} float\n"
             f.write(s)
             for p in points:
                 str_p = [str(elt) for elt in p]
@@ -91,9 +88,7 @@ class Landmark:
                 if isinstance(connec, torch.Tensor):
                     connec = connec.detach().cpu().numpy()
                 a, connec_degree = connec.shape
-                s = connec_names[connec_degree] + " {} {}\n".format(
-                    a, a * (connec_degree + 1)
-                )
+                s = connec_names[connec_degree] + f" {a} {a * (connec_degree + 1)}\n"
                 f.write(s)
                 for face in connec:
                     s = (

@@ -1,13 +1,11 @@
+import logging
 import os
 import time
 import unittest
-from vtk import vtkPolyDataReader
 
 import deformetrica as dfca
 
 from . import example_data_dir, functional_tests_data_dir
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -1121,8 +1119,8 @@ class API(unittest.TestCase):
 
     @unittest.skip
     def test_estimate_longitudinal_atlas_hippocampi(self):
-        import torch
         import numpy as np
+        import torch
 
         torch.manual_seed(42)
         np.random.seed(42)

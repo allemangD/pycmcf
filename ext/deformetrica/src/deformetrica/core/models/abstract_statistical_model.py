@@ -1,9 +1,9 @@
 import logging
 import os
 import time
-import torch
 from abc import abstractmethod
 
+import torch
 import torch.multiprocessing as mp
 
 from ...core import default

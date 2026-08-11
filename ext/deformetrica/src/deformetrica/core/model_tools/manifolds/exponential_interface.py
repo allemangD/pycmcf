@@ -1,9 +1,8 @@
+import logging
 import warnings
 
 import numpy as np
 import torch
-
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -320,7 +319,7 @@ class ExponentialInterface:
         )
 
         assert sp_for_assert < 1e-5, (
-            "Projection onto orthogonal not orthogonal {e}".format(e=sp_for_assert)
+            f"Projection onto orthogonal not orthogonal {sp_for_assert}"
         )
 
         # Store the norm of this initial orthogonal momenta

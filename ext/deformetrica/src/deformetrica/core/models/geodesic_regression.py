@@ -1,7 +1,5 @@
 import math
 
-
-from ...support import kernels as kernel_factory
 from ...core import default
 from ...core.model_tools.deformations.geodesic import Geodesic
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
@@ -11,6 +9,7 @@ from ...core.observations.deformable_objects.deformable_multi_object import (
 )
 from ...in_out.array_readers_and_writers import *
 from ...in_out.dataset_functions import create_template_metadata
+from ...support import kernels as kernel_factory
 from ...support import utilities
 
 logger = logging.getLogger(__name__)
@@ -265,7 +264,7 @@ class GeodesicRegression(AbstractStatisticalModel):
                 # for key, value in template_data.items():
                 #     gradient[key] = value.grad
 
-                if self.use_sobolev_gradient and "landmark_points" in gradient.keys():
+                if self.use_sobolev_gradient and "landmark_points" in gradient:
                     gradient["landmark_points"] = self.sobolev_kernel.convolve(
                         template_data["landmark_points"].detach(),
                         template_data["landmark_points"].detach(),

@@ -5,8 +5,8 @@ import shutil
 import subprocess
 import unittest
 
-import PIL.Image as pimg
 import numpy as np
+import PIL.Image as pimg
 
 import deformetrica as dfca
 
@@ -80,7 +80,7 @@ class FunctionalTest(unittest.TestCase):
                     path_to_log,
                 )
             )
-        elif command is "compute":
+        elif command == "compute":
             # without dataset
             cmd = (
                 "if [ -f ~/.profile ]; then . ~/.profile; fi && "

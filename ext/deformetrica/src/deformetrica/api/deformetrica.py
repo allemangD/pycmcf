@@ -6,20 +6,20 @@ import resource
 import sys
 import time
 
-import torch
 import numpy as np
+import torch
 
-from ..core import default, GpuMode
+from ..core import GpuMode, default
 from ..core.estimators.gradient_ascent import GradientAscent
 from ..core.estimators.mcmc_saem import McmcSaem
 from ..core.estimators.scipy_optimize import ScipyOptimize
 from ..core.models import (
-    PrincipalGeodesicAnalysis,
     AffineAtlas,
     BayesianAtlas,
     DeterministicAtlas,
     GeodesicRegression,
     LongitudinalAtlas,
+    PrincipalGeodesicAnalysis,
 )
 from ..in_out.dataset_functions import create_dataset
 from ..in_out.deformable_object_reader import DeformableObjectReader

@@ -1,11 +1,12 @@
 import logging
-import warnings
 import os
+import warnings
+
+import nibabel as nib
+import numpy as np
 
 # Image readers
 import PIL.Image as pimg
-import nibabel as nib
-import numpy as np
 
 # Mesh readers
 from vtk import vtkPolyDataReader, vtkSTLReader
@@ -122,9 +123,7 @@ class DeformableObjectReader:
             dimension_image = len(img_data.shape)
             if dimension_image != dimension:
                 logger.warning(
-                    "I am reading a {}d image but the dimension is set to {}".format(
-                        dimension_image, dimension
-                    )
+                    f"I am reading a {dimension_image}d image but the dimension is set to {dimension}"
                 )
 
             # out_object.update()

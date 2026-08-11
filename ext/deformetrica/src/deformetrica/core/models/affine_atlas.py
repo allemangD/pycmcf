@@ -1,3 +1,5 @@
+import logging
+
 import torch
 
 from ...core import default
@@ -7,8 +9,6 @@ from ...core.observations.deformable_objects.deformable_multi_object import (
 )
 from ...in_out.array_readers_and_writers import *
 from ...in_out.dataset_functions import create_template_metadata
-
-import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,13 +1,13 @@
+import logging
 import warnings
 from copy import deepcopy
+
 import torch
 
 from ....core import default
 from ....in_out.array_readers_and_writers import *
-from ....support import utilities
 from ....support import kernels as kernel_factory
-
-import logging
+from ....support import utilities
 
 logger = logging.getLogger(__name__)
 

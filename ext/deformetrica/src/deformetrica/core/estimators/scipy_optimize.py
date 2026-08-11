@@ -3,7 +3,7 @@ import logging
 from decimal import Decimal
 
 import numpy as np
-from scipy.optimize import minimize, brute, basinhopping
+from scipy.optimize import minimize
 
 from ...core import default
 from ...core.estimators.abstract_estimator import AbstractEstimator

@@ -2,8 +2,9 @@ import os
 import unittest
 
 import torch
-import deformetrica as dfca
 from torch.autograd import Variable
+
+import deformetrica as dfca
 
 # Tests a few distances computations (current and varifold) and compares them to C++ version
 from . import unit_tests_data_dir

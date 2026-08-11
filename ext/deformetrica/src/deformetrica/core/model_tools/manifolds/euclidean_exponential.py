@@ -1,10 +1,10 @@
+import logging
+
 import torch
 from torch.autograd import Variable
 
 from ....core.model_tools.manifolds.exponential_interface import ExponentialInterface
 from ....support.utilities.general_settings import Settings
-
-import logging
 
 logger = logging.getLogger(__name__)
 

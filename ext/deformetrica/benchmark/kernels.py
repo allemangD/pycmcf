@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- encoding: utf-8 -*-
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,10 +50,10 @@ def build_setup():
     for k, d, t in [
         (k, d, t) for k in kernels for d in initial_devices for t in tensor_sizes
     ]:
-        bench_setup = """
+        bench_setup = f"""
 from __main__ import BenchRunner
-bench = BenchRunner('{kernel}', {tensor}, '{device}')
-""".format(kernel=k, tensor=str(t), device=d)
+bench = BenchRunner('{k}', {t!s}, '{d}')
+"""
 
         setups.append(
             {"kernel": k, "device": d, "tensor_size": t, "bench_setup": bench_setup}

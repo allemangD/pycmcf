@@ -4,32 +4,30 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + os.path.sep + "../../")
 
 import math
-
-import torch
 from copy import deepcopy
 
-from ...in_out.array_readers_and_writers import *
+import matplotlib.pyplot as plt
+import torch
+
 from ...core.models.abstract_statistical_model import AbstractStatisticalModel
-from ...support.utilities.general_settings import Settings
+from ...core.observations.deformable_objects.deformable_multi_object import (
+    DeformableMultiObject,
+)
+from ...core.observations.deformable_objects.image import Image
+from ...in_out.array_readers_and_writers import *
 from ...support.probability_distributions.multi_scalar_inverse_wishart_distribution import (
     MultiScalarInverseWishartDistribution,
 )
 from ...support.probability_distributions.multi_scalar_normal_distribution import (
     MultiScalarNormalDistribution,
 )
-from ...core.observations.deformable_objects.deformable_multi_object import (
-    DeformableMultiObject,
-)
-from ...core.observations.deformable_objects.image import Image
-
-import matplotlib.pyplot as plt
+from ...support.utilities.general_settings import Settings
 
 plt.switch_backend("agg")
-from torch import nn
-from torch import optim
-from torch.utils.data import TensorDataset, DataLoader
-
 import logging
+
+from torch import nn, optim
+from torch.utils.data import DataLoader, TensorDataset
 
 logger = logging.getLogger(__name__)
 
@@ -250,7 +248,7 @@ class DeepPga(AbstractStatisticalModel):
             train_loss /= nb_train_batches
             if epoch % 10 == 0:
                 logger.info(
-                    "Epoch {}/{}".format(epoch, nb_epochs), "Train loss:", train_loss
+                    f"Epoch {epoch}/{nb_epochs}", "Train loss:", train_loss
                 )
 
         self.set_metric_parameters(self.net.get_parameters())
@@ -380,9 +378,7 @@ class DeepPga(AbstractStatisticalModel):
             if self.observation_type == "numpy":
                 noise_dimension = Settings().dimension
                 logger.info(
-                    "Noise dimension automatically set to {}".format(
-                        Settings().dimension
-                    )
+                    f"Noise dimension automatically set to {Settings().dimension}"
                 )
             else:
                 if Settings().dimension == 2:

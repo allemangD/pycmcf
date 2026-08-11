@@ -1,7 +1,6 @@
 from math import sqrt
 
 import numpy as np
-
 import torch
 
 from ...support import utilities

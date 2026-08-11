@@ -1,5 +1,6 @@
-import torch
 import logging
+
+import torch
 
 from ....support import utilities
 
@@ -91,9 +92,7 @@ class MultiObjectAttachment:
 
             else:
                 assert False, (
-                    "Please implement the distance {e} you are trying to use :)".format(
-                        e=self.attachment_types[i]
-                    )
+                    f"Please implement the distance {self.attachment_types[i]} you are trying to use :)"
                 )
 
         return distances

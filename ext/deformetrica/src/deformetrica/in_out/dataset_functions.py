@@ -6,14 +6,14 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from ..support import kernels as kernel_factory
-from ..core.model_tools.attachments.multi_object_attachment import MultiObjectAttachment
 from ..core import default
+from ..core.model_tools.attachments.multi_object_attachment import MultiObjectAttachment
 from ..core.observations.datasets.longitudinal_dataset import LongitudinalDataset
 from ..core.observations.deformable_objects.deformable_multi_object import (
     DeformableMultiObject,
 )
 from ..in_out.deformable_object_reader import DeformableObjectReader
+from ..support import kernels as kernel_factory
 from ..support.utilities.general_settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -181,7 +181,7 @@ def read_and_create_image_dataset(
                     deformable_object_visit.update()
             deformable_objects_subject.append(deformable_object_visit)
         if len(deformable_objects_subject) <= 1:
-            msg = "I have only one observation for subject {}".format(str(i))
+            msg = f"I have only one observation for subject {i!s}"
             warnings.warn(msg)
         deformable_objects_dataset.append(deformable_objects_subject)
 
@@ -348,12 +348,10 @@ def _get_norm_for_object(object, object_id):
                 "Landmark".lower(),
             ]
 
-        except KeyError as e:
+        except KeyError:
             msg = (
-                "Watch out, I did not get a distance type for the object {e}, Please make sure you are running "
-                "shooting or a parallel transport, otherwise distances are required.".format(
-                    e=object_id
-                )
+                f"Watch out, I did not get a distance type for the object {object_id}, Please make sure you are running "
+                "shooting or a parallel transport, otherwise distances are required."
             )
             warnings.warn(msg)
             object_norm = "none"
@@ -378,6 +376,6 @@ def _get_norm_for_object(object, object_id):
             warnings.warn(msg)
 
     else:
-        assert False, "Unknown object type {e}".format(e=object_type)
+        assert False, f"Unknown object type {object_type}"
 
     return object_norm
