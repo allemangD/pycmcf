@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <optimization-parameters>
     <optimization-method-type>ScipyLBFGS</optimization-method-type>
-    <max-iterations>20</max-iterations>
-    <max-line-search-iterations>3</max-line-search-iterations>
-    <convergence-tolerance>1e-2</convergence-tolerance>
+    <max-iterations>100</max-iterations>
+    <max-line-search-iterations>10</max-line-search-iterations>
+    <convergence-tolerance>1e-3</convergence-tolerance>
     <gpu-mode>none</gpu-mode>
     <save-every-n-iters>50</save-every-n-iters>
     <use-sobolev-gradient>On</use-sobolev-gradient>
