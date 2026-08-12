@@ -3,6 +3,7 @@ import logging
 import igl
 import numpy as np
 import torch
+from torch import Tensor
 
 from deformetrica.core.observations import SurfaceMesh
 from deformetrica.support import utilities
@@ -179,128 +180,127 @@ class MultiObjectAttachment:
         )
 
     @staticmethod
-    def varifold_distance(points, source, target, kernel):
+    def varifold_distance(
+            points: Tensor,
+            source: SurfaceMesh,
+            target: SurfaceMesh,
+            kernel: AbstractKernel,
+    ):
         """
         Returns the varifold distance between the 3D meshes
         source and target are SurfaceMesh objects
         points are source points (torch tensor)
         """
         device, _ = utilities.get_best_device(kernel.gpu_mode)
-        c1, n1, c2, n2 = (
-            MultiObjectAttachment.__get_source_and_target_centers_and_normals(
-                points, source, target, device=device
+        dtype = points.dtype
+
+        pa = points
+        fa = source.connectivity
+        na = igl.per_vertex_normals(pa.detach(), fa)
+        aa = igl.massmatrix(pa.detach(), fa).diagonal()
+
+        pb = target.points
+        fb = target.connectivity
+        nb = igl.per_vertex_normals(pb, fb)
+        ab = igl.massmatrix(pb, fb).diagonal()
+
+        def wrap(t):
+            if isinstance(t, np.ndarray):
+                return torch.from_numpy(t)
+            else:
+                return t
+
+        def varifold_scalar_product(x, y):
+            px, ax, nx = (
+                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
+                for t in x
             )
-        )
-
-        # alpha = normales non unitaires
-        areaa = torch.norm(n1, 2, 1)
-        areab = torch.norm(n2, 2, 1)
-
-        nalpha = n1 / areaa.unsqueeze(1)
-        nbeta = n2 / areab.unsqueeze(1)
-
-        def varifold_scalar_product(x, y, areaa, areab, nalpha, nbeta):
+            py, ay, ny = (
+                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
+                for t in y
+            )
             return torch.dot(
-                areaa.view(-1),
+                ax.view(-1),
                 kernel.convolve(
-                    (x, nalpha), (y, nbeta), areab.view(-1, 1), mode="varifold"
+                    (px, nx),
+                    (py, ny),
+                    ay.view(-1, 1),
+                    mode="varifold",
                 ).view(-1),
             )
 
+        a = pa, aa, na
+        b = pb, ab, nb
+
         if target.norm is None:
-            target.norm = varifold_scalar_product(c2, c2, areab, areab, nbeta, nbeta)
+            target.norm = varifold_scalar_product(b, b)
 
         return (
-            varifold_scalar_product(c1, c1, areaa, areaa, nalpha, nalpha)
-            + target.norm
-            - 2 * varifold_scalar_product(c1, c2, areaa, areab, nalpha, nbeta)
+                varifold_scalar_product(a, a)
+                + target.norm
+                - 2 * varifold_scalar_product(a, b)
         )
 
     @staticmethod
     def extended_varifold_distance(
-        points: torch.Tensor,
+        points: Tensor,
         source: SurfaceMesh,
         target: SurfaceMesh,
         kernel: AbstractKernel,
     ):
         """
-        Returns the extended varifold distance between the 3D meshes
+        Returns the extended_varifold distance between the 3D meshes
         source and target are SurfaceMesh objects
         points are source points (torch tensor)
         """
         device, _ = utilities.get_best_device(kernel.gpu_mode)
+        dtype = points.dtype
 
-        dtype = str(points.dtype)
+        pa = points
+        fa = source.connectivity
+        na = igl.per_vertex_normals(pa.detach(), fa)
+        aa = igl.massmatrix(pa.detach(), fa).diagonal()
 
-        V = utilities.move_data(points, device="cpu")
-        F = utilities.move_data(source.connectivity, device="cpu")
+        pb = target.points
+        fb = target.connectivity
+        nb = igl.per_vertex_normals(pb, fb)
+        ab = igl.massmatrix(pb, fb).diagonal()
 
-        M = igl.massmatrix(V, F).astype(np.float32)
-        N = igl.per_vertex_normals(V, F).astype(np.float32)
+        def wrap(t):
+            if isinstance(t, np.ndarray):
+                return torch.from_numpy(t)
+            else:
+                return t
 
-        # L = igl.cotmatrix(V, F).astype(np.float32)
-        # HN = (L * V.detach()) / np.expand_dims(M.diagonal(), 1)
-        # H = np.vecdot(N, HN, axis=1)
-        # K = igl.gaussian_curvature(V, F)
-
-        c1 = utilities.move_data(
-            V,
-            dtype=utilities.get_torch_scalar_type(dtype),
-            device=device,
-        )
-        areaa = utilities.move_data(
-            M.diagonal(),
-            dtype=utilities.get_torch_scalar_type(dtype),
-            device=device,
-        )
-        nalpha = utilities.move_data(
-            N,
-            dtype=utilities.get_torch_scalar_type(dtype),
-            device=device,
-        )
-
-        V = utilities.move_data(target.points, device="cpu")
-        F = utilities.move_data(target.connectivity, device="cpu")
-
-        M = igl.massmatrix(V, F).astype(np.float32)
-        N = igl.per_vertex_normals(V, F).astype(np.float32)
-
-        # L = igl.cotmatrix(V, F).astype(np.float32).tocoo()
-        # HN = (L * V.detach()) / np.expand_dims(M.diagonal(), 1)
-        # H = np.vecdot(N, HN, axis=1)
-        # K = igl.gaussian_curvature(V, F)
-
-        c2 = utilities.move_data(
-            V,
-            dtype=utilities.get_torch_scalar_type(dtype),
-            device=device,
-        )
-        areab = utilities.move_data(
-            M.diagonal(),
-            dtype=utilities.get_torch_scalar_type(dtype),
-            device=device,
-        )
-        nbeta = utilities.move_data(
-            N,
-            dtype=utilities.get_torch_scalar_type(dtype),
-            device=device,
-        )
-
-        def varifold_scalar_product(x, y, areaa, areab, nalpha, nbeta):
+        def extended_varifold_scalar_product(x, y):
+            px, ax, nx = (
+                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
+                for t in x
+            )
+            py, ay, ny = (
+                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
+                for t in y
+            )
             return torch.dot(
-                areaa.view(-1),
+                ax.view(-1),
                 kernel.convolve(
-                    (x, nalpha), (y, nbeta), areab.view(-1, 1), mode="varifold"
+                    (px, nx),
+                    (py, ny),
+                    ay.view(-1, 1),
+                    mode="varifold",
                 ).view(-1),
             )
 
+        a = pa, aa, na
+        b = pb, ab, nb
+
         if target.norm is None:
-            target.norm = varifold_scalar_product(c2, c2, areab, areab, nbeta, nbeta)
+            target.norm = extended_varifold_scalar_product(b, b)
 
         return (
-            varifold_scalar_product(c1, c1, areaa, areaa, nalpha, nalpha)
+            extended_varifold_scalar_product(a, a)
             + target.norm
-            - 2 * varifold_scalar_product(c1, c2, areaa, areab, nalpha, nbeta)
+            - 2 * extended_varifold_scalar_product(a, b)
         )
 
     @staticmethod
