@@ -1,21 +1,23 @@
 <?xml version="1.0"?>
 <model>
-    <model-type>Registration</model-type>
-    <dimension>3</dimension>
+  <model-type>DeterministicAtlas</model-type>
+  <dimension>3</dimension>
 
-    <template>
-        <object id="surf">
-            <deformable-object-type>SurfaceMesh</deformable-object-type>
-            <attachment-type>ExtendedVarifold</attachment-type>
-            <noise-std>0.1</noise-std>
-            <kernel-width>0.15</kernel-width>
-            <kernel-type>keops</kernel-type>
-            <filename>../data/inner.vtk</filename>
-        </object>
-    </template>
+  <template>
+    <dense-mode>On</dense-mode>
+    <object id="surf">
+      <deformable-object-type>SurfaceMesh</deformable-object-type>
+      <attachment-type>ExtendedVarifold</attachment-type>
+      <noise-std>8.5</noise-std>
+      <kernel-width>4.0</kernel-width> <!--mm-->
+      <kernel-type>keops</kernel-type>
+      <filename>../data/inner.vtk</filename>
+    </object>
+  </template>
 
-    <deformation-parameters>
-        <kernel-width>0.15</kernel-width>
-        <kernel-type>keops</kernel-type>
-    </deformation-parameters>
+  <deformation-parameters>
+    <kernel-width>2.75</kernel-width> <!--mm-->
+    <kernel-type>keops</kernel-type>
+    <number-of-timepoints>5</number-of-timepoints>
+  </deformation-parameters>
 </model>

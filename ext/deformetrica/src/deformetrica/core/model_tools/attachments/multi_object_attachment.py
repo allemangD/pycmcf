@@ -181,10 +181,10 @@ class MultiObjectAttachment:
 
     @staticmethod
     def varifold_distance(
-            points: Tensor,
-            source: SurfaceMesh,
-            target: SurfaceMesh,
-            kernel: AbstractKernel,
+        points: Tensor,
+        source: SurfaceMesh,
+        target: SurfaceMesh,
+        kernel: AbstractKernel,
     ):
         """
         Returns the varifold distance between the 3D meshes
@@ -236,9 +236,9 @@ class MultiObjectAttachment:
             target.norm = varifold_scalar_product(b, b)
 
         return (
-                varifold_scalar_product(a, a)
-                + target.norm
-                - 2 * varifold_scalar_product(a, b)
+            varifold_scalar_product(a, a)
+            + target.norm
+            - 2 * varifold_scalar_product(a, b)
         )
 
     @staticmethod
@@ -260,11 +260,23 @@ class MultiObjectAttachment:
         fa = source.connectivity
         na = igl.per_vertex_normals(pa.detach(), fa)
         aa = igl.massmatrix(pa.detach(), fa).diagonal()
+        if hasattr(source, "_h_field"):
+            ha = source._h_field
+        else:
+            hna = (igl.cotmatrix(pa.detach(), fa) * pa.detach()) / np.expand_dims(
+                aa, axis=1
+            )
+            ha = np.vecdot(hna, na, axis=1)
 
         pb = target.points
         fb = target.connectivity
         nb = igl.per_vertex_normals(pb, fb)
         ab = igl.massmatrix(pb, fb).diagonal()
+        if hasattr(target, "_h_field"):
+            hb = target._h_field
+        else:
+            hnb = (igl.cotmatrix(pb, fb) * pb) / np.expand_dims(ab, axis=1)
+            hb = target._h_field = np.vecdot(hnb, nb, axis=1)
 
         def wrap(t):
             if isinstance(t, np.ndarray):
@@ -273,26 +285,26 @@ class MultiObjectAttachment:
                 return t
 
         def extended_varifold_scalar_product(x, y):
-            px, ax, nx = (
+            px, ax, nx, hx = (
                 wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
                 for t in x
             )
-            py, ay, ny = (
+            py, ay, ny, hy = (
                 wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
                 for t in y
             )
             return torch.dot(
                 ax.view(-1),
                 kernel.convolve(
-                    (px, nx),
-                    (py, ny),
+                    (px, nx, hx),
+                    (py, ny, hy),
                     ay.view(-1, 1),
-                    mode="varifold",
+                    mode="extended_varifold",
                 ).view(-1),
             )
 
-        a = pa, aa, na
-        b = pb, ab, nb
+        a = pa, aa, na, ha
+        b = pb, ab, nb, hb
 
         if target.norm is None:
             target.norm = extended_varifold_scalar_product(b, b)

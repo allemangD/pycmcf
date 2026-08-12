@@ -14,10 +14,12 @@ class KeopsKernel(AbstractKernel):
         super().__init__("keops", gpu_mode, kernel_width)
 
         self.gamma = 1.0 / default.tensor_scalar_type([self.kernel_width**2])
+        self.epsilon = default.tensor_scalar_type([1e-3])
 
         self.gaussian_convolve = []
         self.point_cloud_convolve = []
         self.varifold_convolve = []
+        self.extended_varifold_convolve = []
         self.gaussian_convolve_gradient_x = []
 
         for dimension in [2, 3]:
@@ -58,6 +60,25 @@ class KeopsKernel(AbstractKernel):
                         "Y = Vj(" + str(dimension) + ")",
                         "Nx = Vi(" + str(dimension) + ")",
                         "Ny = Vj(" + str(dimension) + ")",
+                        "P = Vj(1)",
+                    ],
+                    reduction_op="Sum",
+                    axis=1,
+                )
+            )
+
+            self.extended_varifold_convolve.append(
+                Genred(
+                    "Exp(-WeightedSqDist(G, X, Y)) * Exp(-WeightedSqDist(G, Hx, Hy)) * Square((Nx|Ny)) * P",
+                    [
+                        "E = Pm(1)",
+                        "G = Pm(1)",
+                        "X = Vi(" + str(dimension) + ")",
+                        "Y = Vj(" + str(dimension) + ")",
+                        "Nx = Vi(" + str(dimension) + ")",
+                        "Ny = Vj(" + str(dimension) + ")",
+                        "Hx = Vi(1)",
+                        "Hy = Vj(1)",
                         "P = Vj(1)",
                     ],
                     reduction_op="Sum",
@@ -153,23 +174,18 @@ class KeopsKernel(AbstractKernel):
             assert len(y) == 2, "tuple length must be 2"
 
             # tuples are immutable, mutability is needed to mode to device
-            x = list(x)
-            y = list(y)
-
-            # move tensors with respect to gpu_mode
-            x[0], x[1], y[0], y[1], p = (
-                self._move_to_device(t, gpu_mode=self.gpu_mode)
-                for t in [x[0], x[1], y[0], y[1], p]
-            )
-            assert x[0].device == y[0].device == p.device, (
-                "x, y and p must be on the same device"
-            )
-            assert x[1].device == y[1].device == p.device, (
-                "x, y and p must be on the same device"
-            )
-
             x, nx = x
             y, ny = y
+
+            # move tensors with respect to gpu_mode
+            x, nx, y, ny, p = (
+                self._move_to_device(t, gpu_mode=self.gpu_mode)
+                for t in (x, nx, y, ny, p)
+            )
+            assert (x.device == t.device for t in (nx, y, ny, p)), (
+                "tensors must be on the same device"
+            )
+
             d = x.size(1)
             gamma = self.gamma.to(x.device, dtype=x.dtype)
 
@@ -180,6 +196,44 @@ class KeopsKernel(AbstractKernel):
                 y.contiguous(),
                 nx.contiguous(),
                 ny.contiguous(),
+                p.contiguous(),
+                device_id=device_id,
+            )
+            return res.cpu() if self.gpu_mode is GpuMode.KERNEL else res
+
+        elif mode == "extended_varifold":
+            assert isinstance(x, tuple), "x must be a tuple"
+            assert len(x) == 3, "tuple length must be 2"
+            assert isinstance(y, tuple), "y must be a tuple"
+            assert len(y) == 3, "tuple length must be 2"
+
+            # tuples are immutable, mutability is needed to mode to device
+            x, nx, hx = x
+            y, ny, hy = y
+
+            # move tensors with respect to gpu_mode
+            x, nx, hx, y, ny, hy, p = (
+                self._move_to_device(t, gpu_mode=self.gpu_mode)
+                for t in (x, nx, hx, y, ny, hy, p)
+            )
+            assert (x.device == t.device for t in (nx, hx, y, ny, hy, p)), (
+                "tensors must be on the same device"
+            )
+
+            d = x.size(1)
+            gamma = self.gamma.to(x.device, dtype=x.dtype)
+            epsilon = self.epsilon.to(x.device, dtype=x.dtype)
+
+            device_id = x.device.index if x.device.index is not None else -1
+            res = self.extended_varifold_convolve[d - 2](
+                epsilon,
+                gamma,
+                x.contiguous(),
+                y.contiguous(),
+                nx.contiguous(),
+                ny.contiguous(),
+                hx.contiguous(),
+                hy.contiguous(),
                 p.contiguous(),
                 device_id=device_id,
             )
