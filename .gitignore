@@ -3,6 +3,7 @@ cmcf-out/
 devel/
 data/
 output/
+output-*/
 *.vtk
 
 ### Python template

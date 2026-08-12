@@ -71,7 +71,7 @@ class SurfaceMesh(Landmark):
         b = points[triangles[:, 1]]
         c = points[triangles[:, 2]]
         centers = (a + b + c) / 3.0
-        normals = torch.cross(b - a, c - a) / 2
+        normals = torch.cross(b - a, c - a, dim=1) / 2
 
         assert torch.device(device) == centers.device == normals.device
         return centers, normals

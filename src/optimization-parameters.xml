@@ -9,6 +9,7 @@
     <use-sobolev-gradient>On</use-sobolev-gradient>
     <freeze-template>Off</freeze-template>
     <freeze-control-points>Off</freeze-control-points>
+    <freeze-momenta>Off</freeze-momenta>
     <memory-length>1</memory-length>
     <use-rk2>Off</use-rk2>
 </optimization-parameters>
