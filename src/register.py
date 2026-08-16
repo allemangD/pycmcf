@@ -74,7 +74,7 @@ model = DeterministicAtlas(
     freeze_momenta=False,
     freeze_template=True,
     number_of_processes=1,
-    number_of_time_points=TIMESTEPS,
+    number_of_time_points=TIMESTEPS + 1,
     process_per_gpu=1,
     shoot_kernel_type="keops",
     smoothing_kernel_width=0.15,
@@ -130,44 +130,11 @@ cps_ = create_regular_grid_of_points(bbox, 0.15, DIMENSION)
 # _, _, cps_ = igl.random_points_on_mesh(10000, source.points, source.connectivity, seed=1)
 # cps_ = np.array(random.sample(list(source.points), k=len(source.points) // 5))
 
-parameters_initial = {
-    # "landmark_points": pts_,
-    # "control_points": cps_,
-    "momenta": np.zeros_like(cps_),
-}
+pts0 = torch.from_numpy(pts_).to(DEVICE, torch.float32).requires_grad_(True)
+cps0 = torch.from_numpy(cps_).to(DEVICE, torch.float32).requires_grad_(True)
+mom0 = torch.zeros_like(cps0).to(DEVICE, torch.float32).requires_grad_(True)
 
-parameters_shape = {key: value.shape for key, value in parameters_initial.items()}
-parameters_order = [key for key in parameters_initial]
-
-
-def serialize(parameters):
-    return np.concatenate([parameters[key].flatten() for key in parameters_order])
-
-
-def deserialize(x):
-    parameters = {}
-    cursor = 0
-    for key in parameters_order:
-        length = np.prod(parameters_shape[key])
-        parameters[key] = x[cursor : cursor + length].reshape(parameters_shape[key])
-        cursor += length
-    return parameters
-
-
-def cost_with_grad(x):
-    effects = deserialize(x)
-
-    pts0 = torch.from_numpy(pts_).to(DEVICE, torch.float32).requires_grad_(False)
-    cps0 = torch.from_numpy(cps_).to(DEVICE, torch.float32).requires_grad_(False)
-
-    # pts0 = (
-    #     torch.from_numpy(effects["landmark_points"]).to(DEVICE, torch.float32).requires_grad_(True)
-    # )
-    # cps0 = (
-    #     torch.from_numpy(effects["control_points"]).to(DEVICE, torch.float32).requires_grad_(True)
-    # )
-    mom0 = torch.from_numpy(effects["momenta"]).to(DEVICE, torch.float32).requires_grad_(True)
-
+def closure():
     dt = 1.0 / TIMESTEPS
     series = [(cps0, mom0, pts0)]
     for _ in range(TIMESTEPS):
@@ -185,71 +152,42 @@ def cost_with_grad(x):
         target,
         var_kernel,
     )
-    attachment = torch.sum(distance / (noise_std**2))
-    regularity = torch.sum(mom * exp_kernel.convolve(cps, cps, mom))
+    attachment = -torch.sum(distance / (noise_std**2))
+    regularity = -torch.sum(mom * exp_kernel.convolve(cps, cps, mom))
 
     total_loss = attachment + regularity
+    logger.info(f"{total_loss = :.3e} ({attachment = :.3e}, {regularity = :.3e})")
+
     total_loss.backward()
 
-    gradient = {
-        # "landmark_points": (
-        #     sob_kernel.convolve(
-        #         pts0.detach(),
-        #         pts0.detach(),
-        #         pts0.grad.detach(),
-        #     )
-        #     .cpu()
-        #     .numpy()
-        # ),
-        # "control_points": cps0.grad.detach().cpu().numpy(),
-        "momenta": mom0.grad.detach().cpu().numpy(),
-    }
-
-    logger.info(f"{total_loss = :.3e} ({attachment = :.3e}, {regularity = :.3e})")
-    return total_loss.detach().cpu().numpy(), serialize(gradient)
+    return total_loss
 
 
-result = minimize(
-    cost_with_grad,
-    serialize(parameters_initial),
-    method="L-BFGS-B",
-    jac=True,
-    options=options,
+print(mom0)
+
+optim = torch.optim.LBFGS(
+    [mom0, pts0, cps0],
+    max_iter=5,
+    tolerance_grad=1e-7,
+    tolerance_change=1e-7,
+    history_size=1,
+    line_search_fn="strong_wolfe",
 )
-msg = result.message
-if msg == "ABNORMAL_TERMINATION_IN_LNSRCH":
-    logger.info(">> Number of line search loops exceeded. Stopping.")
-else:
-    logger.info(">> " + msg)
-res = deserialize(result.x)
 
-pts0 = torch.from_numpy(pts_).to(DEVICE, torch.float32).requires_grad_(False)
-cps0 = torch.from_numpy(cps_).to(DEVICE, torch.float32).requires_grad_(False)
+optim.step(closure)
 
-# pts0 = (
-#     torch.from_numpy(effects["landmark_points"]).to(DEVICE, torch.float32).requires_grad_(True)
-# )
-# cps0 = (
-#     torch.from_numpy(effects["control_points"]).to(DEVICE, torch.float32).requires_grad_(True)
-# )
-mom0 = torch.from_numpy(res["momenta"]).to(DEVICE, torch.float32).requires_grad_(True)
-
-dt = 1.0 / TIMESTEPS
-series = [(cps0, mom0, pts0)]
-for _ in range(TIMESTEPS):
-    cps, mom, pts = series[-1]
-    cps, mom, pts = (
-        cps + dt * exp_kernel.convolve(cps, cps, mom),
-        mom - dt * exp_kernel.convolve_gradient(mom, cps),
-        pts + dt * exp_kernel.convolve(pts, cps, mom),
-    )
-    series.append((cps, mom, pts))
+print(pts0)
+print(cps0)
+print(mom0)
 
 model.set_fixed_effects(
     {
-        "landmark_points": pts0,
-        "control_points": cps0,
-        "momenta": res["momenta"],
+        "template_data": {
+            "landmark_points": pts0.detach().cpu().numpy(),
+        },
+        "landmark_points": pts0.detach().cpu().numpy(),
+        "control_points": cps0.detach().cpu().numpy(),
+        "momenta": mom0.detach().cpu().numpy(),
     }
 )
 model.write(dataset, 0, 0, output_dir)
