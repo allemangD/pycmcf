@@ -4,7 +4,6 @@
     <dimension>3</dimension>
 
     <template>
-<!--        <dense-mode>On</dense-mode>-->
         <object id="surf">
             <deformable-object-type>SurfaceMesh</deformable-object-type>
             <attachment-type>ExtendedVarifold</attachment-type>

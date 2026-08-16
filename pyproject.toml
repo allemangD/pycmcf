@@ -16,13 +16,10 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-deformetrica = { workspace = true }
+deformetrica = { workspace = true}
 
 [tool.uv.workspace]
 members = ["ext/*"]
-
-[tool.ruff]
-line-length = 99
 
 [dependency-groups]
 dev = [
