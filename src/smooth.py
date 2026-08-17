@@ -7,6 +7,11 @@ import vtk
 from sksparse.cholmod import cho_solve
 from tqdm import tqdm
 
+RATE = 0.2  # mm/k/t  # T should be small, on order of 5e-3 to 2e-2 mm/u.
+ITER = 4  # N # should be small, but *not* one. more iterations with smaller rate yields better results for much longer runtime.
+DECIMATE = 0.60  # frac  # target polygon reduction. with sufficient smoothing, order of 0.5 to 0.9 is probably reasonable.
+MERGE_TOL = 1e-3  # merge tol for coincident points
+
 for name, path in {
     (
         "inner",
@@ -20,24 +25,14 @@ for name, path in {
     print(name)
     pipe = vtk.vtkPolyDataReader(file_name=path)
     pipe = vtk.vtkTriangleFilter(input_connection=pipe.output_port)
-    pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
-    pipe.convert_lines_to_points = False
-    pipe.convert_polys_to_lines = False
-    pipe.convert_strips_to_polys = False
+    pipe = decm = vtk.vtkQuadricDecimation(input_connection=pipe.output_port)
+    pipe.SetTargetReduction(1 - np.sqrt(1 - DECIMATE))
     pipe.Update()
+    print(f'pre {decm.actual_reduction = }')
 
     data = pipe.output
 
-    # NOTE the projections are commented because we don't want to adjust the relative positioning of the inner/outer surfaces.
-
     V = np.asarray(data.points)
-    # V -= np.mean(V, axis=0, keepdims=True)
-    # Vnorm = np.sqrt(np.mean(np.square(V)))
-
-    RATE = 1.5e-1  # mm/k/t  # T should be small, on order of 5e-3 to 2e-2 mm/u.
-    ITER = 3  # N # should be small, but *not* one. more iterations with smaller rate yields better results for much longer runtime.
-    MERGE_TOL = 1e-4  # mm  # should be less than half the smallest features to preserve. on order of 1e-3, 1e-4
-    DECIMATE = 0.80  # frac  # target polygon reduction. with sufficient smoothing, order of 0.5 to 0.9 is probably reasonable.
 
     V = np.asarray(data.points, copy=True)
     F = np.reshape(data.polys.connectivity_array, (-1, 3))
@@ -51,26 +46,29 @@ for name, path in {
             M + I - RATE * L,
             (M + I) @ V,
         )
-        # V -= V.mean(axis=0, keepdims=True)
-        # V *= Vnorm / np.sqrt(np.mean(np.square(V)))
 
     print("presmoothing bounds", data.bounds)
     print("smoothing rms", np.sqrt(np.mean((data.points - V) ** 2)))
     data.points = V
     print("postsmoothing bounds", data.bounds)
 
-    pipe = vtk.vtkCleanPolyData(input_data=data)
-    pipe.SetTolerance(MERGE_TOL)
-    pipe = decm = vtk.vtkQuadricDecimation(input_connection=pipe.output_port)
-    pipe.SetTargetReduction(DECIMATE)
     pipe = vtk.vtkTriangleFilter(input_connection=pipe.output_port)
-    pipe = vtk.vtkPolyDataNormals(input_connection=pipe.output_port)
+    pipe = decm = vtk.vtkQuadricDecimation(input_connection=pipe.output_port)
+    pipe.SetTargetReduction(1 - np.sqrt(1 - DECIMATE))
+    norm = pipe = vtk.vtkPolyDataNormals(input_connection=pipe.output_port)
+    pipe.SplittingOff()
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
     pipe.file_name = str(Path(path).with_stem(name))
     pipe.SetFileTypeToBinary()
     pipe.Update()
 
-    print(f'{decm.actual_reduction = !r}')
+    print(f'post {decm.actual_reduction = }')
+
+    F = np.reshape(norm.output.polys.connectivity_array, (-1, 3))
+    V = np.asarray(norm.output.points)
+    M = igl.massmatrix(V, F).diagonal()
+    print(M.min(), M.max())
+
 
 """
 then register with
