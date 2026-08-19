@@ -7,10 +7,12 @@ import vtk
 from sksparse.cholmod import cho_solve
 from tqdm import tqdm
 
-RATE = 2.0
-GROW = 1.50  # geometric growth factor. maybe replace with sigmoid? we're kinda going for roughly constant rms here.
-RMAX = 1000.0
-STEPS = 50
+RATE = 0.02
+GROW = 1.4  # geometric growth factor. maybe replace with sigmoid? we're kinda going for roughly constant rms here.
+RMAX = 500.0
+
+MAX_ITER = 50
+STOP = 1e-4
 
 INNER_PATH = Path("data/inner.vtk")
 OUTER_PATH = Path("output/DeterministicAtlas__Reconstruction__surf__subject_outer.vtk")
@@ -52,9 +54,10 @@ I = 1e-8 * sp.sparse.eye(len(V))
 
 rate = RATE
 
-bar = tqdm(range(STEPS), desc="corr")
-for idx in bar:
+for _ in tqdm(range(MAX_ITER), desc="corr"):
     M = igl.massmatrix(V, F)
+
+    _prev = V.copy()
 
     V = cho_solve(
         M + I - rate * L0,
@@ -75,33 +78,34 @@ for idx in bar:
     vu += fixup
     vv -= fixup
 
-    vu = V[..., :3]
-    inner.points = vu
+    rms_delta = np.sqrt(np.mean(np.square(V - _prev))) / rate
 
-    vv = V[..., 3:]
-    outer.points = vv
-
-    Path("output-flow").mkdir(exist_ok=True)
-
-    pipe = vtk.vtkPolyDataNormals()
-    pipe.input_data = inner
-    pipe = vtk.vtkPolyDataWriter(
-        file_name=f"output-flow/inner-{idx + 1:03}.vtk",
-        input_connection=pipe.output_port,
-    )
-    pipe.SetFileTypeToBinary()
-    pipe.Update()
-
-    pipe = vtk.vtkPolyDataNormals()
-    pipe.input_data = outer
-    pipe = vtk.vtkPolyDataWriter(
-        file_name=f"output-flow/outer-{idx + 1:03}.vtk",
-        input_connection=pipe.output_port,
-    )
-    pipe.SetFileTypeToBinary()
-    pipe.Update()
+    if rms_delta < STOP:
+        break
 
     rate *= GROW
     rate = np.clip(rate, 0, RMAX)
 
-    bar.set_description(f"{rate = :.2f}")
+
+vu = V[..., :3]
+inner.points = vu
+
+vv = V[..., 3:]
+outer.points = vv
+
+output = Path("output-flow")
+output.mkdir(exist_ok=True)
+
+pipe = vtk.vtkPolyDataNormals()
+pipe.input_data = inner
+pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
+pipe.file_name = output.joinpath("inner.vtk")
+pipe.SetFileTypeToBinary()
+pipe.Update()
+
+pipe = vtk.vtkPolyDataNormals()
+pipe.input_data = outer
+pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
+pipe.file_name = output.joinpath("outer.vtk")
+pipe.SetFileTypeToBinary()
+pipe.Update()
