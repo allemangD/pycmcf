@@ -249,13 +249,10 @@ class DeterministicAtlas(AbstractStatisticalModel):
             number_of_subjects,
         )
         if self.dense_mode:
-            self.fixed_effects["momenta"][0] = (
-                -igl.per_vertex_normals(
-                    self.fixed_effects["control_points"],
-                    self.template.object_list[0].connectivity,
-                )
-                * 0.5
-            )
+            self.fixed_effects["momenta"][0] = -igl.per_vertex_normals(
+                self.fixed_effects["control_points"],
+                self.template.object_list[0].connectivity,
+            ) / math.sqrt(self.fixed_effects["control_points"].size)
         else:
             logger.warning("not using dense mode, so not using outward normal moments.")
 
