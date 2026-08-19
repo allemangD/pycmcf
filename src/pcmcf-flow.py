@@ -14,6 +14,8 @@ RMAX = 500.0
 MAX_ITER = 50
 STOP = 1e-4
 
+REGULARIZE = 1e-4
+
 INNER_PATH = Path("data/inner.vtk")
 OUTER_PATH = Path("output/DeterministicAtlas__Reconstruction__surf__subject_outer.vtk")
 
@@ -52,7 +54,7 @@ Vnorm = np.sqrt(np.mean(np.square(V)))
 
 L0 = igl.cotmatrix(V, F)
 
-I = 1e-5 * sp.sparse.eye(len(V))
+I = REGULARIZE * sp.sparse.eye(len(V))
 
 rate = RATE
 
@@ -95,14 +97,14 @@ for it in tqdm(range(MAX_ITER), desc="corr"):
     pipe = vtk.vtkPolyDataNormals()
     pipe.input_data = inner
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-    pipe.file_name = output.joinpath(f"inner-{it}.vtk")
+    pipe.file_name = output.joinpath(f"inner-{it:03}.vtk")
     pipe.SetFileTypeToBinary()
     pipe.Update()
 
     pipe = vtk.vtkPolyDataNormals()
     pipe.input_data = outer
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-    pipe.file_name = output.joinpath(f"outer-{it}.vtk")
+    pipe.file_name = output.joinpath(f"outer-{it:03}.vtk")
     pipe.SetFileTypeToBinary()
     pipe.Update()
 

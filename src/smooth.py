@@ -10,6 +10,7 @@ from tqdm import tqdm
 RATE = 0.2  # mm/k/t  # T should be small, on order of 5e-3 to 2e-2 mm/u.
 ITER = 4  # N # should be small, but *not* one. more iterations with smaller rate yields better results for much longer runtime.
 DECIMATE = 0.60  # frac  # target polygon reduction. with sufficient smoothing, order of 0.5 to 0.9 is probably reasonable.
+REGULARIZE = 1e-4
 MERGE_TOL = 1e-3  # merge tol for coincident points
 
 for name, path in {
@@ -28,7 +29,7 @@ for name, path in {
     pipe = decm = vtk.vtkQuadricDecimation(input_connection=pipe.output_port)
     pipe.SetTargetReduction(1 - np.sqrt(1 - DECIMATE))
     pipe.Update()
-    print(f'pre {decm.actual_reduction = }')
+    print(f"pre {decm.actual_reduction = }")
 
     data = pipe.output
 
@@ -37,7 +38,7 @@ for name, path in {
     V = np.asarray(data.points, copy=True)
     F = np.reshape(data.polys.connectivity_array, (-1, 3))
     L = igl.cotmatrix(V, F)
-    I = 1e-5 * sp.sparse.eye(len(V))
+    I = REGULARIZE * sp.sparse.eye(len(V))
 
     for _ in tqdm(range(ITER), desc="decimate"):
         M = igl.massmatrix(V, F)
@@ -62,7 +63,7 @@ for name, path in {
     pipe.SetFileTypeToBinary()
     pipe.Update()
 
-    print(f'post {decm.actual_reduction = }')
+    print(f"post {decm.actual_reduction = }")
 
     F = np.reshape(norm.output.polys.connectivity_array, (-1, 3))
     V = np.asarray(norm.output.points)
