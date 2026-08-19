@@ -19,6 +19,7 @@ OUTER_PATH = Path("output/DeterministicAtlas__Reconstruction__surf__subject_oute
 
 pipe = vtk.vtkPolyDataReader(file_name=INNER_PATH)
 pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
+pipe.SetTolerance(1e-4)
 pipe = vtk.vtkCurvatures(input_connection=pipe.output_port)
 pipe.SetCurvatureTypeToMean()
 pipe.Update()
@@ -26,6 +27,7 @@ inner: vtk.vtkPolyData = pipe.output
 
 pipe = vtk.vtkPolyDataReader(file_name=OUTER_PATH)
 pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
+pipe.SetTolerance(1e-4)
 pipe = vtk.vtkCurvatures(input_connection=pipe.output_port)
 pipe.SetCurvatureTypeToMean()
 pipe.Update()
@@ -50,11 +52,18 @@ Vnorm = np.sqrt(np.mean(np.square(V)))
 
 L0 = igl.cotmatrix(V, F)
 
-I = 1e-8 * sp.sparse.eye(len(V))
+I = 1e-5 * sp.sparse.eye(len(V))
 
 rate = RATE
 
-for _ in tqdm(range(MAX_ITER), desc="corr"):
+output = Path("output-flow")
+output.mkdir(exist_ok=True)
+for f in output.glob('inner-*.vtk'):
+    f.unlink()
+for f in output.glob('outer-*.vtk'):
+    f.unlink()
+
+for it in tqdm(range(MAX_ITER), desc="corr"):
     M = igl.massmatrix(V, F)
 
     _prev = V.copy()
@@ -80,32 +89,25 @@ for _ in tqdm(range(MAX_ITER), desc="corr"):
 
     rms_delta = np.sqrt(np.mean(np.square(V - _prev))) / rate
 
+    inner.points = vu
+    outer.points = vv
+
+    pipe = vtk.vtkPolyDataNormals()
+    pipe.input_data = inner
+    pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
+    pipe.file_name = output.joinpath(f"inner-{it}.vtk")
+    pipe.SetFileTypeToBinary()
+    pipe.Update()
+
+    pipe = vtk.vtkPolyDataNormals()
+    pipe.input_data = outer
+    pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
+    pipe.file_name = output.joinpath(f"outer-{it}.vtk")
+    pipe.SetFileTypeToBinary()
+    pipe.Update()
+
     if rms_delta < STOP:
         break
 
     rate *= GROW
     rate = np.clip(rate, 0, RMAX)
-
-
-vu = V[..., :3]
-inner.points = vu
-
-vv = V[..., 3:]
-outer.points = vv
-
-output = Path("output-flow")
-output.mkdir(exist_ok=True)
-
-pipe = vtk.vtkPolyDataNormals()
-pipe.input_data = inner
-pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-pipe.file_name = output.joinpath("inner.vtk")
-pipe.SetFileTypeToBinary()
-pipe.Update()
-
-pipe = vtk.vtkPolyDataNormals()
-pipe.input_data = outer
-pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-pipe.file_name = output.joinpath("outer.vtk")
-pipe.SetFileTypeToBinary()
-pipe.Update()
