@@ -4,10 +4,11 @@ import igl
 import numpy as np
 import scipy as sp
 import vtk
+from scipy.sparse.linalg import spsolve
 from sksparse.cholmod import cho_solve
 from tqdm import tqdm
 
-RATE = 0.02
+RATE = 0.05
 GROW = 1.4  # geometric growth factor. maybe replace with sigmoid? we're kinda going for roughly constant rms here.
 RMAX = 500.0
 
@@ -22,18 +23,38 @@ OUTER_PATH = Path("output/DeterministicAtlas__Reconstruction__surf__subject_oute
 pipe = vtk.vtkPolyDataReader(file_name=INNER_PATH)
 pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
 pipe.SetTolerance(1e-4)
-pipe = vtk.vtkCurvatures(input_connection=pipe.output_port)
-pipe.SetCurvatureTypeToMean()
 pipe.Update()
 inner: vtk.vtkPolyData = pipe.output
+
+ALPHA = 1e-4
+
+v = np.asarray(inner.points)
+f = np.asarray(inner.polys.connectivity_array).reshape((-1, 3))
+m = igl.massmatrix(v, f)
+l = igl.cotmatrix(v, f)
+ql = l.T @ m.power(-1) @ l
+n = igl.per_vertex_normals(v, f)
+h = np.vecdot((l @ v) / np.expand_dims(m.diagonal(), 1), n)
+zh = cho_solve(ALPHA * ql + (1 - ALPHA) * m, ALPHA * m * h) / ALPHA
+inner.point_data["H"] = zh
+print(zh.min(), zh.max())
 
 pipe = vtk.vtkPolyDataReader(file_name=OUTER_PATH)
 pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
 pipe.SetTolerance(1e-4)
-pipe = vtk.vtkCurvatures(input_connection=pipe.output_port)
-pipe.SetCurvatureTypeToMean()
 pipe.Update()
 outer: vtk.vtkPolyData = pipe.output
+
+v = np.asarray(outer.points)
+f = np.asarray(outer.polys.connectivity_array).reshape((-1, 3))
+m = igl.massmatrix(v, f)
+l = igl.cotmatrix(v, f)
+ql = l.T @ m.power(-1) @ l
+n = igl.per_vertex_normals(v, f)
+h = np.vecdot((l @ v) / np.expand_dims(m.diagonal(), 1), n)
+zh = cho_solve(ALPHA * ql + (1 - ALPHA) * m, ALPHA * m * h) / ALPHA
+outer.point_data["H"] = zh
+print(zh.min(), zh.max())
 
 vu = np.asarray(inner.points, copy=True)
 vv = np.asarray(outer.points, copy=True)
@@ -60,9 +81,9 @@ rate = RATE
 
 output = Path("output-flow")
 output.mkdir(exist_ok=True)
-for f in output.glob('inner-*.vtk'):
+for f in output.glob("inner-*.vtk"):
     f.unlink()
-for f in output.glob('outer-*.vtk'):
+for f in output.glob("outer-*.vtk"):
     f.unlink()
 
 for it in tqdm(range(MAX_ITER), desc="corr"):
