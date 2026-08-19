@@ -4,7 +4,6 @@ import igl
 import numpy as np
 import scipy as sp
 import vtk
-from scipy.sparse.linalg import spsolve
 from sksparse.cholmod import cho_solve
 from tqdm import tqdm
 
@@ -21,8 +20,6 @@ INNER_PATH = Path("data/inner.vtk")
 OUTER_PATH = Path("output/DeterministicAtlas__Reconstruction__surf__subject_outer.vtk")
 
 pipe = vtk.vtkPolyDataReader(file_name=INNER_PATH)
-pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
-pipe.SetTolerance(1e-4)
 pipe.Update()
 inner: vtk.vtkPolyData = pipe.output
 
@@ -40,8 +37,6 @@ inner.point_data["H"] = zh
 print(zh.min(), zh.max())
 
 pipe = vtk.vtkPolyDataReader(file_name=OUTER_PATH)
-pipe = vtk.vtkCleanPolyData(input_connection=pipe.output_port)
-pipe.SetTolerance(1e-4)
 pipe.Update()
 outer: vtk.vtkPolyData = pipe.output
 
@@ -86,6 +81,13 @@ for f in output.glob("inner-*.vtk"):
 for f in output.glob("outer-*.vtk"):
     f.unlink()
 
+links = vtk.vtkPolyData()
+links.SetPoints(vtk.vtkPoints())
+links.SetLines(vtk.vtkCellArray())
+links.points = np.concatenate([vu, vv], axis=0)
+for i in range(len(vu)):
+    links.InsertNextCell(vtk.VTK_LINE, 2, [i, i + len(vu)])
+
 for it in tqdm(range(MAX_ITER), desc="corr"):
     M = igl.massmatrix(V, F)
 
@@ -114,18 +116,25 @@ for it in tqdm(range(MAX_ITER), desc="corr"):
 
     inner.points = vu
     outer.points = vv
+    links.points = np.concatenate([vu, vv], axis=0)
 
     pipe = vtk.vtkPolyDataNormals()
     pipe.input_data = inner
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-    pipe.file_name = output.joinpath(f"inner-{it:03}.vtk")
+    pipe.file_name = output.joinpath(f"{it:03}-inner.vtk")
     pipe.SetFileTypeToBinary()
     pipe.Update()
 
     pipe = vtk.vtkPolyDataNormals()
     pipe.input_data = outer
     pipe = vtk.vtkPolyDataWriter(input_connection=pipe.output_port)
-    pipe.file_name = output.joinpath(f"outer-{it:03}.vtk")
+    pipe.file_name = output.joinpath(f"{it:03}-outer.vtk")
+    pipe.SetFileTypeToBinary()
+    pipe.Update()
+
+    pipe = vtk.vtkPolyDataWriter()
+    pipe.input_data = links
+    pipe.file_name = output.joinpath(f"{it:03}-links.vtk")
     pipe.SetFileTypeToBinary()
     pipe.Update()
 
