@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import igl
@@ -6,6 +7,8 @@ import scipy as sp
 from sksparse.cholmod import cho_factor
 from vtkmodules.vtkCommonDataModel import vtkPolyData
 from vtkmodules.vtkIOLegacy import vtkPolyDataReader, vtkPolyDataWriter
+
+logger = logging.getLogger(__name__)
 
 
 def flow(
@@ -59,7 +62,7 @@ def flow(
 
     prev = np.empty_like(cc)
     for it in range(max_iters):
-        print(f"{it=}: {rate=:.3e}", end="... ", flush=True)
+        logger.debug(f"{it=}: {rate=:.3e}")
         mm = igl.massmatrix(cc, ff)
 
         np.copyto(prev, cc)
@@ -83,12 +86,13 @@ def flow(
         vv[...] -= fixup
 
         mean_speed = np.sqrt(np.mean(np.square(cc - prev))) / rate
-        print(f"{mean_speed=:.3e}")
-
+        logger.debug(f"{mean_speed=:.3e}")
         if mean_speed < stop_speed:
+            logger.info("reached stop condition.")
             break
-
         rate = np.clip(rate * growth, 0, rate_max)
+    else:
+        logger.info("maximum iterations exceeded.")
 
     u_path = u_path.with_stem(f"{u_path.stem}-flow")
     u.points = uu

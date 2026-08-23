@@ -2,32 +2,25 @@ import logging
 from pathlib import Path
 
 from decimate import decimate
-from register import register
 from flow import flow
+from register import register
 
 logging.basicConfig(level=logging.INFO)
 
-moving = Path("data/oasis4-inner.vtk")
-fixed = Path("data/oasis4-outer.vtk")
+data_root = Path("data/")
+aux_outputs = data_root.joinpath("outputs")
+aux_outputs.mkdir(exist_ok=True)
 
-DEFORMETRICA_OUTPUTS = Path("data/outputs/")
-DEFORMETRICA_OUTPUTS.mkdir(exist_ok=True)
+moving = data_root.joinpath("oasis4-inner.vtk")
+fixed = data_root.joinpath("oasis4-outer.vtk")
+print(f"pipeline inputs:\n  {moving}\n  {fixed}")
 
-DECIMATE = 0.75
+moving = decimate(moving)
+fixed = decimate(fixed)
+print(f"decimation outputs:\n  {moving}\n  {fixed}")
 
-moving = decimate(moving, target_reduction=DECIMATE)
-fixed = decimate(fixed, target_reduction=DECIMATE)
+moving, fixed = register(moving, fixed, output_dir=aux_outputs)
+print(f"deformetrica outputs:\n  {moving}\n  {fixed}")
 
-# invoke deformetrica
-moving, fixed = register(
-    moving,
-    fixed,
-    output_dir=DEFORMETRICA_OUTPUTS,
-)
-
-# invoke chordal cmcf
-
-moving, fixed = flow(
-    moving,
-    fixed,
-)
+moving, fixed = flow(moving, fixed)
+print(f"chordal flow outputs:\n  {moving}\n  {fixed}")

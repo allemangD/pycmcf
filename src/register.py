@@ -1,9 +1,12 @@
+import logging
 import shutil
 from pathlib import Path
 
 from deformetrica.core.estimators import ScipyOptimize
 from deformetrica.core.models import DeterministicAtlas
 from deformetrica.in_out.dataset_functions import create_dataset
+
+logger = logging.getLogger(__name__)
 
 
 def register(
@@ -22,6 +25,7 @@ def register(
     data_kernel_width=4.0,
     data_noise_std=8.5,
     deformation_kernel_width=2.75,
+    verbose=2,
 ):
     """Invoke Deformetrica DeterministicAtlas."""
 
@@ -42,7 +46,6 @@ def register(
         "visit_ages": [[]],
     }
 
-    print("loading deformetrica dataset")
     dataset = create_dataset(
         TEMPLATE_OPTIONS,
         dimension={
@@ -64,7 +67,6 @@ def register(
         "cannot estimate an atlas from a non-cross-sectional dataset."
     )
 
-    print("loading deformetrica model")
     model = DeterministicAtlas(
         TEMPLATE_OPTIONS,
         dataset.number_of_subjects,
@@ -82,7 +84,6 @@ def register(
     )
     model.initialize_noise_variance(dataset)
 
-    print("loading deformetrica estimator")
     estimator = ScipyOptimize(
         model,
         dataset,
@@ -94,12 +95,10 @@ def register(
         memory_length=memory_length,
         optimization_method_type="scipylbfgs",
         optimized_log_likelihood="complete",
-        verbose=2,
+        verbose=verbose,
     )
 
-    print("registering")
     estimator.update()
-    print("writing outputs")
     estimator.write()
 
     recon = output_dir.joinpath(
