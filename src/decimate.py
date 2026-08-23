@@ -4,8 +4,11 @@ from vtkmodules.vtkFiltersCore import vtkTriangleFilter, vtkQuadricDecimation
 from vtkmodules.vtkIOLegacy import vtkPolyDataReader, vtkPolyDataWriter
 
 
-def decimate(src: Path, dst: Path, *, target_reduction: float):
+def decimate(src: Path, *, target_reduction: float):
     """Downsample large meshes."""
+
+    dst = src.with_stem(f'{src.stem}-decimated')
+    print(f"downsampling {src} -> {dst}")
 
     pipe = vtkPolyDataReader()
     pipe.file_name = src
@@ -16,3 +19,5 @@ def decimate(src: Path, dst: Path, *, target_reduction: float):
     pipe.file_name = dst
     pipe.SetFileTypeToBinary()
     pipe.Update()
+
+    return dst

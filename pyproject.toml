@@ -8,7 +8,7 @@ dependencies = [
     "itk>=5.4.5",
     "libigl>=2.6.2",
     "numpy>=2.4.4",
-    "scikit-sparse>=0.4.16",
+    "scikit-sparse==0.5",
     "scipy>=1.17.1",
     "tqdm>=4.67.3",
     "vtk>=9.6.1",

@@ -3,32 +3,31 @@ from pathlib import Path
 
 from decimate import decimate
 from register import register
+from flow import flow
 
 logging.basicConfig(level=logging.INFO)
 
-PATHS = {
-    "moving": Path("data/oasis4-inner.vtk"),
-    "fixed": Path("data/oasis4-outer.vtk"),
-}
+moving = Path("data/oasis4-inner.vtk")
+fixed = Path("data/oasis4-outer.vtk")
 
 DEFORMETRICA_OUTPUTS = Path("data/outputs/")
 DEFORMETRICA_OUTPUTS.mkdir(exist_ok=True)
 
-DECIMATE = 0.95
+DECIMATE = 0.75
 
-# downsample meshes
-for key in list(PATHS):
-    src = PATHS[key]
-    dst = src.with_stem(f"{src.stem}-decimated")
-    print(f"downsampling {src} -> {dst}")
-    decimate(src, dst, target_reduction=DECIMATE)
-    PATHS[key] = dst
+moving = decimate(moving, target_reduction=DECIMATE)
+fixed = decimate(fixed, target_reduction=DECIMATE)
 
 # invoke deformetrica
-PATHS["moving"], PATHS["fixed"] = register(
-    PATHS["moving"],
-    PATHS["fixed"],
+moving, fixed = register(
+    moving,
+    fixed,
     output_dir=DEFORMETRICA_OUTPUTS,
 )
 
 # invoke chordal cmcf
+
+moving, fixed = flow(
+    moving,
+    fixed,
+)

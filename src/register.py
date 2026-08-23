@@ -1,3 +1,4 @@
+import shutil
 from pathlib import Path
 
 from deformetrica.core.estimators import ScipyOptimize
@@ -101,9 +102,12 @@ def register(
     print("writing outputs")
     estimator.write()
 
-    fixed = output_dir.joinpath(
+    recon = output_dir.joinpath(
         "DeterministicAtlas__Reconstruction__surface__subject_fixed.vtk"
     )
-    assert fixed.exists()
+    assert recon.exists()
+
+    fixed = fixed.with_stem(f"{fixed.stem}-recon")
+    shutil.copy(recon, fixed)
 
     return moving, fixed
