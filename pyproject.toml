@@ -5,14 +5,24 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "itk",
-    "libigl",
-    "numpy",
-    "ruff>=0.15.10",
-    "scikit-sparse~=0.4.0",
-    "scipy",
-    "scipy-stubs~=1.17.0",
-    "tqdm",
-    "vtk",
-    #    "wand",
+    "itk>=5.4.5",
+    "libigl>=2.6.2",
+    "numpy>=2.4.4",
+    "scikit-sparse>=0.4.16",
+    "scipy>=1.17.1",
+    "tqdm>=4.67.3",
+    "vtk>=9.6.1",
+    "deformetrica>=4.3.0",
+]
+
+[tool.uv.sources]
+deformetrica = { workspace = true}
+
+[tool.uv.workspace]
+members = ["ext/*"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.11",
+    "scipy-stubs>=1.17.1.4",
 ]
