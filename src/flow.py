@@ -32,7 +32,7 @@ def flow(
     pipe.Update()
     v: vtkPolyData = pipe.output
 
-    assert len(u.points) == len(v.points)
+    assert u.number_of_points == v.number_of_points
     f_u = np.asarray(u.polys.connectivity_array).reshape((-1, 3))
     f_v = np.asarray(v.polys.connectivity_array).reshape((-1, 3))
     assert np.array_equal(f_u, f_v)
@@ -40,8 +40,8 @@ def flow(
 
     cc = np.concatenate(
         [
-            u.points,
-            v.points,
+            np.asarray(u.points.data),
+            np.asarray(v.points.data),
         ],
         axis=1,
     )
