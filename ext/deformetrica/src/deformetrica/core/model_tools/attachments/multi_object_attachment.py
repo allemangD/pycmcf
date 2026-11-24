@@ -9,6 +9,8 @@ from deformetrica.core.observations import SurfaceMesh
 from deformetrica.support import utilities
 from deformetrica.support.kernels import AbstractKernel
 
+from chordal.differentiable_geometry import normals_areas_curvature
+
 logger = logging.getLogger(__name__)
 
 
@@ -258,15 +260,9 @@ class MultiObjectAttachment:
 
         pa = points
         fa = source.connectivity
-        na = igl.per_vertex_normals(pa.detach(), fa)
-        aa = igl.massmatrix(pa.detach(), fa).diagonal()
-        if hasattr(source, "_h_field"):
-            ha = source._h_field
-        else:
-            hna = (igl.cotmatrix(pa.detach(), fa) * pa.detach()) / np.expand_dims(
-                aa, axis=1
-            )
-            ha = np.vecdot(hna, na, axis=1)
+
+        faces = torch.as_tensor(fa, dtype=torch.int, device=points.device)
+        na, aa, ha = normals_areas_curvature(points, faces)
 
         pb = target.points
         fb = target.connectivity
