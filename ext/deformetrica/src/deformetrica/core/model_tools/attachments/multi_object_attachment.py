@@ -182,65 +182,41 @@ class MultiObjectAttachment:
         )
 
     @staticmethod
-    def varifold_distance(
-        points: Tensor,
-        source: SurfaceMesh,
-        target: SurfaceMesh,
-        kernel: AbstractKernel,
-    ):
+    def varifold_distance(points, source, target, kernel):
         """
-        Returns the varifold distance between the 3D meshes
+        Returns the current distance between the 3D meshes
         source and target are SurfaceMesh objects
         points are source points (torch tensor)
         """
         device, _ = utilities.get_best_device(kernel.gpu_mode)
-        dtype = points.dtype
-
-        pa = points
-        fa = source.connectivity
-        na = igl.per_vertex_normals(pa.detach(), fa)
-        aa = igl.massmatrix(pa.detach(), fa).diagonal()
-
-        pb = target.points
-        fb = target.connectivity
-        nb = igl.per_vertex_normals(pb, fb)
-        ab = igl.massmatrix(pb, fb).diagonal()
-
-        def wrap(t):
-            if isinstance(t, np.ndarray):
-                return torch.from_numpy(t)
-            else:
-                return t
-
-        def varifold_scalar_product(x, y):
-            px, ax, nx = (
-                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
-                for t in x
+        c1, n1, c2, n2 = (
+            MultiObjectAttachment.__get_source_and_target_centers_and_normals(
+                points, source, target, device=device
             )
-            py, ay, ny = (
-                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
-                for t in y
-            )
+        )
+
+        # alpha = normales non unitaires
+        areaa = torch.norm(n1, 2, 1)
+        areab = torch.norm(n2, 2, 1)
+
+        nalpha = n1 / areaa.unsqueeze(1)
+        nbeta = n2 / areab.unsqueeze(1)
+
+        def varifold_scalar_product(x, y, areaa, areab, nalpha, nbeta):
             return torch.dot(
-                ax.view(-1),
+                areaa.view(-1),
                 kernel.convolve(
-                    (px, nx),
-                    (py, ny),
-                    ay.view(-1, 1),
-                    mode="varifold",
+                    (x, nalpha), (y, nbeta), areab.view(-1, 1), mode="varifold"
                 ).view(-1),
             )
 
-        a = pa, aa, na
-        b = pb, ab, nb
-
         if target.norm is None:
-            target.norm = varifold_scalar_product(b, b)
+            target.norm = varifold_scalar_product(c2, c2, areab, areab, nbeta, nbeta)
 
         return (
-            varifold_scalar_product(a, a)
+            varifold_scalar_product(c1, c1, areaa, areaa, nalpha, nalpha)
             + target.norm
-            - 2 * varifold_scalar_product(a, b)
+            - 2 * varifold_scalar_product(c1, c2, areaa, areab, nalpha, nbeta)
         )
 
     @staticmethod
