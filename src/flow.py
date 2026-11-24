@@ -76,15 +76,6 @@ def flow(
         cc[...] -= np.mean(cc, axis=0, keepdims=True)
         cc[...] *= cc_norm / np.sqrt(np.mean(np.square(cc)))
 
-        diff = uu - vv
-        dist = np.linalg.norm(diff, axis=1, keepdims=True)
-        norm = diff / dist
-        extra = dist - true_dist
-        fixup = -norm * extra / 2
-
-        uu[...] += fixup
-        vv[...] -= fixup
-
         mean_speed = np.sqrt(np.mean(np.square(cc - prev))) / rate
         logger.debug(f"{mean_speed=:.3e}")
         if mean_speed < stop_speed:
@@ -93,6 +84,15 @@ def flow(
         rate = np.clip(rate * growth, 0, rate_max)
     else:
         logger.info("maximum iterations exceeded.")
+
+    diff = uu - vv
+    dist = np.linalg.norm(diff, axis=1, keepdims=True)
+    norm = diff / dist
+    extra = dist - true_dist
+    fixup = -norm * extra / 2
+
+    uu[...] += fixup
+    vv[...] -= fixup
 
     u_path = u_path.with_stem(f"{u_path.stem}-flow")
     u.points = uu
