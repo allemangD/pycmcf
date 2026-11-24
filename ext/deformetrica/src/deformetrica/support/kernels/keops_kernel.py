@@ -1,3 +1,4 @@
+import functools
 import logging
 
 import torch
@@ -9,97 +10,34 @@ from deformetrica.support.kernels import AbstractKernel
 logger = logging.getLogger(__name__)
 
 
+@functools.cache
+def _genred(formula, aliases):
+    """Compile (once per formula and dimensions) a KeOps sum reduction over j."""
+    return Genred(formula, list(aliases), reduction_op="Sum", axis=1)
+
+
 class KeopsKernel(AbstractKernel):
-    def __init__(self, gpu_mode=default.gpu_mode, kernel_width=None, **kwargs):
+    def __init__(
+        self,
+        gpu_mode=default.gpu_mode,
+        kernel_width=None,
+        feature_width=None,
+        **kwargs,
+    ):
         super().__init__("keops", gpu_mode, kernel_width)
 
         self.gamma = 1.0 / default.tensor_scalar_type([self.kernel_width**2])
-        self.epsilon = default.tensor_scalar_type([1e-3])
+        # Extended-varifold feature kernel exp(-|dH|^2 / w^2). H is in 1/length, so the
+        # commensurate width is w = 1 / kernel_width: the term becomes
+        # kernel_width^2 |dH|^2, dimensionless like |x - y|^2 / kernel_width^2.
+        if feature_width is None:
+            feature_width = 1.0 / self.kernel_width
+        self.feature_gamma = 1.0 / default.tensor_scalar_type([feature_width**2])
 
-        self.gaussian_convolve = []
-        self.point_cloud_convolve = []
-        self.varifold_convolve = []
-        self.extended_varifold_convolve = []
-        self.gaussian_convolve_gradient_x = []
-
-        for dimension in [2, 3]:
-            self.gaussian_convolve.append(
-                Genred(
-                    "Exp(-G*SqDist(X,Y)) * P",
-                    [
-                        "G = Pm(1)",
-                        "X = Vi(" + str(dimension) + ")",
-                        "Y = Vj(" + str(dimension) + ")",
-                        "P = Vj(" + str(dimension) + ")",
-                    ],
-                    reduction_op="Sum",
-                    axis=1,
-                )
-            )
-
-            self.point_cloud_convolve.append(
-                Genred(
-                    "Exp(-G*SqDist(X,Y)) * P",
-                    [
-                        "G = Pm(1)",
-                        "X = Vi(" + str(dimension) + ")",
-                        "Y = Vj(" + str(dimension) + ")",
-                        "P = Vj(1)",
-                    ],
-                    reduction_op="Sum",
-                    axis=1,
-                )
-            )
-
-            self.varifold_convolve.append(
-                Genred(
-                    "Exp(-(WeightedSqDist(G, X, Y))) * Square((Nx|Ny)) * P",
-                    [
-                        "G = Pm(1)",
-                        "X = Vi(" + str(dimension) + ")",
-                        "Y = Vj(" + str(dimension) + ")",
-                        "Nx = Vi(" + str(dimension) + ")",
-                        "Ny = Vj(" + str(dimension) + ")",
-                        "P = Vj(1)",
-                    ],
-                    reduction_op="Sum",
-                    axis=1,
-                )
-            )
-
-            self.extended_varifold_convolve.append(
-                Genred(
-                    "Exp(-WeightedSqDist(G, X, Y)) * Exp(-WeightedSqDist(G, Hx, Hy)) * Square((Nx|Ny)) * P",
-                    [
-                        "E = Pm(1)",
-                        "G = Pm(1)",
-                        "X = Vi(" + str(dimension) + ")",
-                        "Y = Vj(" + str(dimension) + ")",
-                        "Nx = Vi(" + str(dimension) + ")",
-                        "Ny = Vj(" + str(dimension) + ")",
-                        "Hx = Vi(1)",
-                        "Hy = Vj(1)",
-                        "P = Vj(1)",
-                    ],
-                    reduction_op="Sum",
-                    axis=1,
-                )
-            )
-
-            self.gaussian_convolve_gradient_x.append(
-                Genred(
-                    "(Px|Py) * Exp(-G*SqDist(X,Y)) * (X-Y)",
-                    [
-                        "G = Pm(1)",
-                        "X = Vi(" + str(dimension) + ")",
-                        "Y = Vj(" + str(dimension) + ")",
-                        "Px = Vi(" + str(dimension) + ")",
-                        "Py = Vj(" + str(dimension) + ")",
-                    ],
-                    reduction_op="Sum",
-                    axis=1,
-                )
-            )
+    @staticmethod
+    def _dims(**dims):
+        """KeOps alias list; dims maps each variable name to (category, dimension)."""
+        return tuple(f"{k} = {cat}({d})" for k, (cat, d) in dims.items())
 
     def __eq__(self, other):
         return AbstractKernel.__eq__(self, other)
@@ -127,7 +65,12 @@ class KeopsKernel(AbstractKernel):
             gamma = self.gamma.to(x.device, dtype=x.dtype)
 
             device_id = x.device.index if x.device.index is not None else -1
-            res = self.gaussian_convolve[d - 2](
+            res = _genred(
+                "Exp(-G*SqDist(X,Y)) * P",
+                self._dims(
+                    G=("Pm", 1), X=("Vi", d), Y=("Vj", d), P=("Vj", p.size(1))
+                ),
+            )(
                 gamma,
                 x.contiguous(),
                 y.contiguous(),
@@ -158,7 +101,10 @@ class KeopsKernel(AbstractKernel):
             gamma = self.gamma.to(x.device, dtype=x.dtype)
 
             device_id = x.device.index if x.device.index is not None else -1
-            res = self.point_cloud_convolve[d - 2](
+            res = _genred(
+                "Exp(-G*SqDist(X,Y)) * P",
+                self._dims(G=("Pm", 1), X=("Vi", d), Y=("Vj", d), P=("Vj", 1)),
+            )(
                 gamma,
                 x.contiguous(),
                 y.contiguous(),
@@ -182,7 +128,7 @@ class KeopsKernel(AbstractKernel):
                 self._move_to_device(t, gpu_mode=self.gpu_mode)
                 for t in (x, nx, y, ny, p)
             )
-            assert (x.device == t.device for t in (nx, y, ny, p)), (
+            assert all(x.device == t.device for t in (nx, y, ny, p)), (
                 "tensors must be on the same device"
             )
 
@@ -190,7 +136,17 @@ class KeopsKernel(AbstractKernel):
             gamma = self.gamma.to(x.device, dtype=x.dtype)
 
             device_id = x.device.index if x.device.index is not None else -1
-            res = self.varifold_convolve[d - 2](
+            res = _genred(
+                "Exp(-(WeightedSqDist(G, X, Y))) * Square((Nx|Ny)) * P",
+                self._dims(
+                    G=("Pm", 1),
+                    X=("Vi", d),
+                    Y=("Vj", d),
+                    Nx=("Vi", nx.size(1)),
+                    Ny=("Vj", ny.size(1)),
+                    P=("Vj", 1),
+                ),
+            )(
                 gamma,
                 x.contiguous(),
                 y.contiguous(),
@@ -203,9 +159,9 @@ class KeopsKernel(AbstractKernel):
 
         elif mode == "extended_varifold":
             assert isinstance(x, tuple), "x must be a tuple"
-            assert len(x) == 3, "tuple length must be 2"
+            assert len(x) == 3, "tuple length must be 3"
             assert isinstance(y, tuple), "y must be a tuple"
-            assert len(y) == 3, "tuple length must be 2"
+            assert len(y) == 3, "tuple length must be 3"
 
             # tuples are immutable, mutability is needed to mode to device
             x, nx, hx = x
@@ -216,17 +172,32 @@ class KeopsKernel(AbstractKernel):
                 self._move_to_device(t, gpu_mode=self.gpu_mode)
                 for t in (x, nx, hx, y, ny, hy, p)
             )
-            assert (x.device == t.device for t in (nx, hx, y, ny, hy, p)), (
+            assert all(x.device == t.device for t in (nx, hx, y, ny, hy, p)), (
                 "tensors must be on the same device"
             )
 
             d = x.size(1)
             gamma = self.gamma.to(x.device, dtype=x.dtype)
-            epsilon = self.epsilon.to(x.device, dtype=x.dtype)
+            feature_gamma = self.feature_gamma.to(x.device, dtype=x.dtype)
+            hx, hy = hx.reshape(len(hx), -1), hy.reshape(len(hy), -1)
 
             device_id = x.device.index if x.device.index is not None else -1
-            res = self.extended_varifold_convolve[d - 2](
-                epsilon,
+            res = _genred(
+                "Exp(-WeightedSqDist(G, X, Y)) * Exp(-WeightedSqDist(E, Hx, Hy))"
+                " * Square((Nx|Ny)) * P",
+                self._dims(
+                    E=("Pm", 1),
+                    G=("Pm", 1),
+                    X=("Vi", d),
+                    Y=("Vj", d),
+                    Nx=("Vi", nx.size(1)),
+                    Ny=("Vj", ny.size(1)),
+                    Hx=("Vi", hx.size(1)),
+                    Hy=("Vj", hy.size(1)),
+                    P=("Vj", 1),
+                ),
+            )(
+                feature_gamma,
                 gamma,
                 x.contiguous(),
                 y.contiguous(),
@@ -268,7 +239,16 @@ class KeopsKernel(AbstractKernel):
         res = (
             -2
             * gamma
-            * self.gaussian_convolve_gradient_x[d - 2](
+            * _genred(
+                "(Px|Py) * Exp(-G*SqDist(X,Y)) * (X-Y)",
+                self._dims(
+                    G=("Pm", 1),
+                    X=("Vi", d),
+                    Y=("Vj", d),
+                    Px=("Vi", px.size(1)),
+                    Py=("Vj", py.size(1)),
+                ),
+            )(
                 gamma, x, y, px, py, device_id=device_id
             )
         )
