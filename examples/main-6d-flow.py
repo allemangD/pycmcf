@@ -15,12 +15,12 @@ moving = data_root.joinpath("oasis4-inner.vtk")
 fixed = data_root.joinpath("oasis4-outer.vtk")
 print(f"pipeline inputs:\n  {moving}\n  {fixed}")
 
-moving = decimate(moving)
-fixed = decimate(fixed)
+moving = decimate(moving, target_reduction=0.90)
+fixed = decimate(fixed, target_reduction=0.90)
 print(f"decimation outputs:\n  {moving}\n  {fixed}")
 
 moving, fixed = register(moving, fixed, output_dir=aux_outputs)
 print(f"deformetrica outputs:\n  {moving}\n  {fixed}")
 
-moving, fixed = flow(moving, fixed)
+moving, fixed = flow(moving, fixed, stop_speed=1e-4, max_iters=100)
 print(f"chordal flow outputs:\n  {moving}\n  {fixed}")
