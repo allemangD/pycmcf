@@ -85,6 +85,8 @@ def flow(
     else:
         logger.info("maximum iterations exceeded.")
 
+    cc[...] += cc_cent
+
     diff = uu - vv
     dist = np.linalg.norm(diff, axis=1, keepdims=True)
     norm = diff / dist
@@ -168,6 +170,8 @@ def flow_3d(
         rate = np.clip(rate * growth, 0, rate_max)
     else:
         logger.info("maximum iterations exceeded.")
+
+    cc[...] += cc_cent
 
     u_path = u_path.with_stem(f"{u_path.stem}-flow")
     u.points = uu
