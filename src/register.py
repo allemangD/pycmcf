@@ -48,19 +48,7 @@ def register(
 
     dataset = create_dataset(
         TEMPLATE_OPTIONS,
-        dimension={
-            "dense_mode": dense_mode,
-            "deformation_kernel_type": "keops",
-            "dimension": 3,
-            "freeze_control_points": dense_mode,
-            "freeze_momenta": False,
-            "freeze_template": True,
-            "number_of_time_points": number_of_time_points,
-            "use_sobolev_gradient": use_sobolev,
-            "use_rk2_for_flow": use_rk2,
-            "use_rk2_for_shoot": use_rk2,
-            "deformation_kernel_width": deformation_kernel_width,
-        }["dimension"],
+        dimension=3,
         **DATASET_OPTIONS,
     )
     assert dataset.is_cross_sectional(), (
