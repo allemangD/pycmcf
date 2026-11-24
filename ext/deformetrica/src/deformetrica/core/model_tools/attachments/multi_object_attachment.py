@@ -1,7 +1,5 @@
 import logging
 
-import igl
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -9,7 +7,11 @@ from deformetrica.core.observations import SurfaceMesh
 from deformetrica.support import utilities
 from deformetrica.support.kernels import AbstractKernel
 
-from chordal.differentiable_geometry import normals_areas_curvature
+from chordal.differentiable_geometry import (
+    normals_areas_curvature,
+    vertex_tangent_planes,
+    voronoi_areas,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -227,65 +229,60 @@ class MultiObjectAttachment:
         kernel: AbstractKernel,
     ):
         """
-        Returns the extended_varifold distance between the 3D meshes
-        source and target are SurfaceMesh objects
-        points are source points (torch tensor)
+        Returns the extended varifold distance between the source (at `points`) and the target.
+
+        Features are H0, fixed on each object: its `features` array (n, k) if set (e.g. H0
+        carried through a flow), otherwise H of the object's own initial points (R^3 only),
+        computed once and stored as `features`. They are constants: no gradient flows
+        through them.
+        Tangent planes: unit normals in R^3, unit tangent 2-vectors in other dimensions.
+        The target's geometry and norm are computed once and cached on the target.
         """
         device, _ = utilities.get_best_device(kernel.gpu_mode)
-        dtype = points.dtype
 
-        pa = points
-        fa = source.connectivity
+        def faces(obj, device):
+            return torch.as_tensor(obj.connectivity, dtype=torch.long, device=device)
 
-        faces = torch.as_tensor(fa, dtype=torch.int, device=points.device)
-        na, aa, ha = normals_areas_curvature(points, faces)
+        def h0(obj):
+            if getattr(obj, "features", None) is None:
+                x = torch.as_tensor(obj.points, dtype=torch.float64)
+                if x.shape[1] != 3:
+                    raise ValueError(
+                        f"extended varifold in R^{x.shape[1]} needs `features` on both "
+                        "objects; H from the points is only defined in R^3"
+                    )
+                with torch.no_grad():
+                    obj.features = normals_areas_curvature(x, faces(obj, x.device))[2]
+            return obj.features
 
-        pb = target.points
-        fb = target.connectivity
-        nb = igl.per_vertex_normals(pb, fb)
-        ab = igl.massmatrix(pb, fb).diagonal()
-        if hasattr(target, "_h_field"):
-            hb = target._h_field
-        else:
-            hnb = (igl.cotmatrix(pb, fb) * pb) / np.expand_dims(ab, axis=1)
-            hb = target._h_field = np.vecdot(hnb, nb, axis=1)
-
-        def wrap(t):
-            if isinstance(t, np.ndarray):
-                return torch.from_numpy(t)
+        def geometry(x, obj):
+            f = faces(obj, x.device)
+            if x.shape[1] == 3:
+                n, a, _ = normals_areas_curvature(x, f, curvature=False)
             else:
-                return t
+                n, a = vertex_tangent_planes(x, f), voronoi_areas(x, f)
+            h = torch.as_tensor(h0(obj), dtype=x.dtype, device=x.device)
+            return tuple(t.to(device) for t in (x, a, n, h.reshape(len(x), -1)))
 
-        def extended_varifold_scalar_product(x, y):
-            px, ax, nx, hx = (
-                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
-                for t in x
-            )
-            py, ay, ny, hy = (
-                wrap(t).type(dtype, non_blocking=True).to(device, non_blocking=True)
-                for t in y
-            )
+        def scalar_product(x, y):
+            px, ax, nx, hx = x
+            py, ay, ny, hy = y
             return torch.dot(
                 ax.view(-1),
                 kernel.convolve(
-                    (px, nx, hx),
-                    (py, ny, hy),
-                    ay.view(-1, 1),
-                    mode="extended_varifold",
+                    (px, nx, hx), (py, ny, hy), ay.view(-1, 1), mode="extended_varifold"
                 ).view(-1),
             )
 
-        a = pa, aa, na, ha
-        b = pb, ab, nb, hb
+        a = geometry(points, source)
+        if getattr(target, "_extended_varifold", None) is None:
+            with torch.no_grad():
+                pb = torch.as_tensor(target.points, dtype=points.dtype, device=points.device)
+                target._extended_varifold = b = geometry(pb, target)
+                target.norm = scalar_product(b, b)
+        b = target._extended_varifold
 
-        if target.norm is None:
-            target.norm = extended_varifold_scalar_product(b, b)
-
-        return (
-            extended_varifold_scalar_product(a, a)
-            + target.norm
-            - 2 * extended_varifold_scalar_product(a, b)
-        )
+        return scalar_product(a, a) + target.norm - 2 * scalar_product(a, b)
 
     @staticmethod
     def landmark_distance(points, target):
