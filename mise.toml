@@ -1,5 +1,5 @@
 [tools]
-cmake = "3.10"
+cmake = "3"
 python = "3.13"
 
 [env._.python.venv]
