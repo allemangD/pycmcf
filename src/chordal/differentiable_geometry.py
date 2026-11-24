@@ -34,13 +34,35 @@ def vertex_normals(x, F):
     return vn / vn.norm(dim=1, keepdim=True).clamp_min(1e-12)
 
 
+def _double_area(a, b):
+    """|a x b| = 2 * triangle area, in any dimension (Lagrange identity)."""
+    aa, bb, ab = (a * a).sum(1), (b * b).sum(1), (a * b).sum(1)
+    return (aa * bb - ab * ab).clamp_min(0).sqrt()
+
+
+def vertex_tangent_planes(x, F):
+    """Area-weighted unit tangent 2-vectors e1 ^ e2, as d(d-1)/2 Pluecker coordinates.
+
+    The varifold term (n_x . n_y)^2 generalises to (t_x . t_y)^2 = cos^2 of the angle between
+    the tangent planes; in R^3 t is n up to sign and ordering, so the kernel value is the same.
+    """
+    v0, v1, v2 = x[F[:, 0]], x[F[:, 1]], x[F[:, 2]]
+    a, b = v1 - v0, v2 - v0
+    i, j = torch.triu_indices(x.shape[1], x.shape[1], 1, device=x.device)
+    ft = a[:, i] * b[:, j] - a[:, j] * b[:, i]           # 2 * face area * unit 2-vector
+    vt = torch.zeros(len(x), len(i), dtype=x.dtype, device=x.device)
+    for k in range(3):
+        vt = vt.index_add(0, F[:, k], ft)
+    return vt / vt.norm(dim=1, keepdim=True).clamp_min(1e-12)
+
+
 def voronoi_areas(x, F):
     """Mixed Voronoi vertex areas, as igl.massmatrix(V, F) (MASSMATRIX_TYPE_DEFAULT = Voronoi):
     Voronoi region for non-obtuse triangles, area/2 to the obtuse corner and area/4 to the others."""
     v = [x[F[:, k]] for k in range(3)]
     e = [v[2] - v[1], v[0] - v[2], v[1] - v[0]]          # edge opposite corner k
     l2 = [(ek ** 2).sum(1) for ek in e]
-    dbl = torch.cross(e[2], -e[1], dim=1).norm(dim=1)     # 2 * area
+    dbl = _double_area(e[2], -e[1])
     area = 0.5 * dbl
     cot = [((-e[(k + 2) % 3]) * e[(k + 1) % 3]).sum(1) / dbl.clamp_min(1e-30) for k in range(3)]
     # Voronoi share of corner k: (l2 of the two edges at k, weighted by cot of the opposite corners) / 8
