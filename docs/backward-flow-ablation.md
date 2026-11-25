@@ -280,11 +280,11 @@ All in [`util`](util/); run from the repository root (they put `src/` on the pat
 
 Example, from the repository root:
 
-    python docs/aux/flow_schedule_sweep.py data/oasis4-inner-decimated.vtk \
+    python docs/util/flow_schedule_sweep.py data/oasis4-inner-decimated.vtk \
         data/oasis4-outer-decimated-recon.vtk /tmp/sweep
     python -c "import sys; sys.path.insert(0, 'src'); from pathlib import Path; \
         from backflow import backflow; backflow(Path('/tmp/sweep/default/oasis4-inner-decimated-flow-states.npz'))"
-    python docs/aux/compare_backflow.py /tmp/sweep/default/oasis4-inner-decimated-flow-states.npz \
+    python docs/util/compare_backflow.py /tmp/sweep/default/oasis4-inner-decimated-flow-states.npz \
         /tmp/sweep/default/oasis4-inner-decimated-flow-states-back-R6.npz
 
 The full backward runs use `src/backflow.py` directly; `examples/main-backflow.py` runs R6 and

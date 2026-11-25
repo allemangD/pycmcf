@@ -31,7 +31,7 @@ Helper scripts are in [`util`](util/). Each script states its usage in its docst
 | 5 | `Varifold` restored to upstream semantics | `76ffbf7a` |
 | 6 | Generalisation to R^d (areas, tangent planes, KeOps per dimension) | `4420a203`, `e863ea43`, `39681a98`; docstring `2b9f323e` |
 | 7 | NaN gradient at degenerate triangles (regression from 6); additive epsilon rejected | `2b9f323e` |
-| 8 | Stopping on a single L-BFGS step; windowed relative-improvement rule | `358c27b7` |
+| 8 | Stopping on a single L-BFGS step; windowed relative-improvement rule | `9ccd1121`, `984b7387` |
 
 ## 1. Gradient did not flow through normals, areas and H
 
