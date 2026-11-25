@@ -60,9 +60,12 @@ def flow(
 
     rate = rate_0
 
+    # every iterate in the input frame, for the staged backward flow
+    states = [cc + cc_cent]
+    rates = []
+
     prev = np.empty_like(cc)
     for it in range(max_iters):
-        logger.debug(f"{it=}: {rate=:.3e}")
         mm = igl.massmatrix(cc, ff)
 
         np.copyto(prev, cc)
@@ -76,8 +79,16 @@ def flow(
         cc[...] -= np.mean(cc, axis=0, keepdims=True)
         cc[...] *= cc_norm / np.sqrt(np.mean(np.square(cc)))
 
+        states.append(cc + cc_cent)
+        rates.append(rate)
+
+        step = np.linalg.norm(cc - prev, axis=1)
         mean_speed = np.sqrt(np.mean(np.square(cc - prev))) / rate
-        logger.debug(f"{mean_speed=:.3e}")
+        logger.info(
+            f"{it=}: {rate=:.3e}{' (clipped)' if rate == rate_max else ''}  "
+            f"step p50 {np.median(step):.3f} p95 {np.percentile(step, 95):.3f} "
+            f"max {step.max():.3f}  {mean_speed=:.3e}"
+        )
         if mean_speed < stop_speed:
             logger.info("reached stop condition.")
             break
@@ -95,6 +106,11 @@ def flow(
 
     uu[...] += fixup
     vv[...] -= fixup
+    states.append(cc.copy())  # the chord-length projection Q is the last stage
+
+    states_path = u_path.with_name(f"{u_path.stem}-flow-states.npz")
+    np.savez(states_path, faces=ff, states=np.stack(states), rates=np.array(rates))
+    logger.info(f"saved {len(states)} flow states to {states_path}")
 
     u_path = u_path.with_stem(f"{u_path.stem}-flow")
     u.points = uu
@@ -112,7 +128,7 @@ def flow(
     pipe.input_data = v
     pipe.Update()
 
-    return u_path, v_path
+    return u_path, v_path, states_path
 
 
 def flow_3d(

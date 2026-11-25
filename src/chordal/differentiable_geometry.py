@@ -37,14 +37,28 @@ def vertex_normals(x, F):
 def _double_area(a, b):
     """|a x b| = 2 * triangle area, in any dimension (Lagrange identity)."""
     aa, bb, ab = (a * a).sum(1), (b * b).sum(1), (a * b).sum(1)
-    return (aa * bb - ab * ab).clamp_min(0).sqrt()
+    return (aa * bb - ab * ab).clamp_min(1e-30).sqrt()  # finite gradient at 0
 
 
 def vertex_tangent_planes(x, F):
-    """Area-weighted unit tangent 2-vectors e1 ^ e2, as d(d-1)/2 Pluecker coordinates.
+    """Area-weighted unit tangent 2-vectors, in any ambient dimension d.
 
-    The varifold term (n_x . n_y)^2 generalises to (t_x . t_y)^2 = cos^2 of the angle between
-    the tangent planes; in R^3 t is n up to sign and ordering, so the kernel value is the same.
+    A face with edges a, b spans the 2-vector a ^ b, stored as its d(d-1)/2 Pluecker
+    coordinates a_i b_j - a_j b_i (i < j): 3 in R^3, 15 in R^6. Its norm is |a x b|, twice
+    the face area, and it plays the role of the face normal a x b. In R^3 the two are the same
+    vector up to sign and ordering of components (Hodge duality), so every inner product, and
+    hence the varifold kernel, is unchanged.
+
+    The varifold term (n_x . n_y)^2 becomes (t_x . t_y)^2. For unit 2-vectors of two planes,
+    t_x . t_y = cos(theta_1) cos(theta_2), where theta_1, theta_2 are the principal angles
+    between the planes. In R^3 two planes always share a line, so theta_1 = 0 and this is the
+    cosine of the dihedral angle, n_x . n_y. In R^6 both angles are free: the kernel is 1 only
+    for identical planes and falls as either angle grows.
+
+    The vertex value sums its faces' 2-vectors (weighted by area, as for vertex normals) and
+    normalises. In R^3 any sum of 2-vectors is again a plane; in R^4 and up it need not be (it
+    can mix two planes), so at strongly curved vertices t is a unit 2-vector that only
+    approximates a tangent plane. The kernel stays a valid positive-definite kernel.
     """
     v0, v1, v2 = x[F[:, 0]], x[F[:, 1]], x[F[:, 2]]
     a, b = v1 - v0, v2 - v0

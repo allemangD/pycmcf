@@ -1,24 +1,26 @@
 """
-Baseline backward flow: LDDMM in R^6 from the flowed chords back to the original chords.
+Baseline backward flow: LDDMM through the saved forward-flow states, last to first.
 
-The forward flow (flow.flow) keeps the triangulation, so chord i of the flowed surface is known
-to correspond to chord i of the original. That gives the baseline a ground truth: after the
-backward flow, chord i should sit on chord i. The registration itself never sees vertex
-indices; it only sees the extended varifold attachment, as in register().
+flow.flow() keeps the triangulation and saves every iterate, so chord i of every state is known
+to correspond to chord i of the original. That gives the baseline a ground truth at every step;
+the registrations themselves never see vertex indices, only the extended varifold attachment,
+as in register().
 
-  - template: flowed chords c_f = (u_f, v_f), translated so its centroid matches the original
-    (flow() returns centred surfaces);
-  - target:   original chords c_0 = (u, v);
-  - features: H0 = [H(u), H(v)] per chord from the original surfaces, carried unchanged on both
-    sides (the paper's H0 is fixed at the first timestep);
-  - tangent planes: unit 2-vectors in R^6 (normals have no meaning there);
+  - steps: K -> K-1 -> ... -> 0 over the saved states. Each step starts from the previous
+    step's result, not from the true state, so errors accumulate as in a real backward flow;
+    each result is scored against the true state it targets;
+  - features: H0 = [H(u), H(v)] per chord from state 0, carried unchanged on both sides;
   - deformation: dense LDDMM (control points = template vertices), shot with deformetrica's
     Exponential and fitted with scipy L-BFGS-B on the deterministic-atlas objective
-    attachment / noise_std^2 + |p|_K^2.
+    attachment / noise_std^2 + |p|_K^2. The composition of the steps is a diffeomorphism.
 
-The flowed chords are tens of mm from the originals, beyond any single fine kernel, so the fit
-runs as coarse-to-fine stages, each starting where the previous one ended. The composition is
-still a diffeomorphism of R^6.
+Two spaces, compared as an ablation (outputs are tagged with the space):
+
+  - "R6" (baseline): one diffeomorphism of R^6 acting on the chord surface c = (u, v); one
+    extended varifold attachment, with unit tangent 2-vectors as tangent planes;
+  - "R3" (ablation): one diffeomorphism of R^3 acting on the white and pial surfaces together
+    (2n control points); two attachments, white -> white and pial -> pial, both carrying the
+    same per-chord H0 pair. The two surfaces must then stay disjoint in R^3 at every state.
 """
 
 import logging
@@ -36,26 +38,31 @@ from deformetrica.core.model_tools.attachments.multi_object_attachment import (
 from deformetrica.core.model_tools.deformations.exponential import Exponential
 from deformetrica.support import utilities
 from deformetrica.support.kernels.keops_kernel import KeopsKernel
-from vtkmodules.util.numpy_support import numpy_to_vtk, vtk_to_numpy
-from vtkmodules.vtkIOLegacy import vtkPolyDataReader, vtkPolyDataWriter
+from vtkmodules.util.numpy_support import numpy_to_vtk, numpy_to_vtkIdTypeArray
+from vtkmodules.vtkCommonCore import vtkPoints
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
+from vtkmodules.vtkIOLegacy import vtkPolyDataWriter
 
 from chordal.differentiable_geometry import normals_areas_curvature
 
 logger = logging.getLogger(__name__)
 
 
-def _read(path: Path):
-    pipe = vtkPolyDataReader()
-    pipe.file_name = str(path)
-    pipe.Update()
-    pd = pipe.output
-    V = vtk_to_numpy(pd.GetPoints().GetData()).astype(np.float64)
-    F = vtk_to_numpy(pd.GetPolys().GetConnectivityArray()).reshape(-1, 3)
-    return pd, V, F.astype(np.int64)
-
-
-def _write(path: Path, pd, V, arrays):
-    pd.GetPoints().SetData(numpy_to_vtk(np.ascontiguousarray(V), deep=True))
+def _write(path: Path, V, F, arrays):
+    points = vtkPoints()
+    points.SetData(numpy_to_vtk(np.ascontiguousarray(V, dtype=np.float64), deep=True))
+    cells = vtkCellArray()
+    cells.SetData(
+        numpy_to_vtkIdTypeArray(
+            np.arange(0, 3 * len(F) + 1, 3, dtype=np.int64), deep=True
+        ),
+        numpy_to_vtkIdTypeArray(
+            np.ascontiguousarray(F, dtype=np.int64).ravel(), deep=True
+        ),
+    )
+    pd = vtkPolyData()
+    pd.SetPoints(points)
+    pd.SetPolys(cells)
     for name, a in arrays.items():
         arr = numpy_to_vtk(np.ascontiguousarray(a, dtype=np.float64), deep=True)
         arr.SetName(name)
@@ -87,20 +94,16 @@ def chord_errors(c, c0):
     }
 
 
-def _summary(label, errors):
-    logger.info(
-        f"{label}: "
-        + "  ".join(
-            f"{k} p50 {np.median(np.abs(e)):.3f} p95 {np.percentile(np.abs(e), 95):.3f}"
-            for k, e in errors.items()
-        )
+def _summary(errors):
+    return "  ".join(
+        f"{k} p50 {np.median(np.abs(e)):.3f} p95 {np.percentile(np.abs(e), 95):.3f}"
+        for k, e in errors.items()
     )
 
 
-def _fit_stage(
+def _fit_step(
     x0,
-    template,
-    target,
+    objects,
     *,
     deformation_kernel_width,
     data_kernel_width,
@@ -112,7 +115,10 @@ def _fit_stage(
     convergence_tolerance,
     memory_length,
 ):
-    """One dense LDDMM fit from points x0 (n, 6); returns the deformed points."""
+    """One dense LDDMM fit from points x0 (m, d); returns the deformed points.
+
+    objects: (rows of x0, template, target) per attachment; the distances are summed.
+    """
     deformation = KeopsKernel(kernel_width=deformation_kernel_width)
     data = KeopsKernel(
         kernel_width=data_kernel_width, feature_width=feature_kernel_width
@@ -120,7 +126,6 @@ def _fit_stage(
     device, _ = utilities.get_best_device(deformation.gpu_mode)
     dtype = default.tensor_scalar_type
     cp = utilities.move_data(x0, device=device, dtype=dtype)
-    template.points = x0
 
     exponential = Exponential(
         dense_mode=True,
@@ -142,9 +147,13 @@ def _fit_stage(
             flat.reshape(x0.shape), device=device, dtype=dtype
         )
         momenta.requires_grad_(True)
+        x = shoot(momenta)
         attachment = (
-            MultiObjectAttachment.extended_varifold_distance(
-                shoot(momenta), template, target, data
+            sum(
+                MultiObjectAttachment.extended_varifold_distance(
+                    x[rows], template, target, data
+                )
+                for rows, template, target in objects
             )
             / data_noise_std**2
         )
@@ -169,63 +178,87 @@ def _fit_stage(
         },
     )
     attachment, regularity = objective.last
-    logger.info(
-        f"stage deformation {deformation_kernel_width} mm, data {data_kernel_width} mm: "
-        f"{result.nit} iterations in {time.perf_counter() - start:.0f} s, "
-        f"attachment {attachment:.4e}  regularity {regularity:.4e}  ({result.message})"
+    info = (
+        f"{result.nit} its {time.perf_counter() - start:.0f} s  "
+        f"attachment {attachment:.3e} regularity {regularity:.3e}"
     )
+    if not result.success:
+        info += f" ({result.message})"
 
     momenta = utilities.move_data(
         result.x.reshape(x0.shape), device=device, dtype=dtype
     )
     with torch.no_grad():
-        return shoot(momenta).detach().cpu().numpy().astype(np.float64)
+        return shoot(momenta).detach().cpu().numpy().astype(np.float64), info
 
 
 def backflow(
-    u: Path,
-    v: Path,
-    u_flow: Path,
-    v_flow: Path,
+    states_path: Path,
     *,
-    stages=((40.0, 40.0), (20.0, 20.0), (10.0, 10.0), (5.0, 5.0)),
+    space="R6",
+    deformation_kernel_width=5.0,
+    data_kernel_width=5.0,
     feature_kernel_width=None,
     data_noise_std=1.0,
-    number_of_time_points=11,
+    number_of_time_points=5,
     use_rk2=True,
-    max_iterations=200,
+    max_iterations=100,
     convergence_tolerance=1e-8,
     memory_length=15,
 ):
-    """Register the flowed chords (u_flow, v_flow) back onto the original chords (u, v).
+    """Flow the last saved forward-flow state back to the first, one saved step at a time.
 
-    stages: (deformation kernel width, data kernel width) in mm, coarse to fine.
+    states_path: the .npz written by flow.flow() (faces (m, 3), states (K+1, n, 6)).
+    space: "R6" (baseline) or "R3" (ablation); see the module docstring.
     feature_kernel_width: width of the H0 kernel in 1/mm; None for the commensurate
         1 / data kernel width, as in register().
-    Returns the paths of the reconstructed white and pial surfaces; each carries per-vertex
-    errors against the known correspondence (white_error, pial_error, chord_length_error,
-    chord_angle).
+    Writes <stem>-back-<space>.npz (the backward states as chords, aligned with the forward
+    ones) and <stem>-back-<space>-{white,pial}.vtk (the final result, with per-vertex errors against state 0:
+    white_error, pial_error, chord_length_error, chord_angle). Returns the three paths.
     """
-    pd_u, Vu, F = _read(u)
-    _, Vv, Fv = _read(v)
-    _, Vuf, Fuf = _read(u_flow)
-    _, Vvf, Fvf = _read(v_flow)
-    assert all(np.array_equal(F, f) for f in (Fv, Fuf, Fvf)), "meshes must share faces"
+    z = np.load(states_path)
+    F, S = z["faces"].astype(np.int64), z["states"]
+    h0 = np.stack(
+        [mean_curvature(S[0, :, :3], F), mean_curvature(S[0, :, 3:], F)], axis=1
+    )
+    template = SimpleNamespace(connectivity=F, features=h0)
+    n = S.shape[1]
 
-    c0 = np.hstack([Vu, Vv])
-    c = np.hstack([Vuf, Vvf])
-    c += c0.mean(axis=0) - c.mean(axis=0)
-    h0 = np.stack([mean_curvature(Vu, F), mean_curvature(Vv, F)], axis=1)
+    def target(points):
+        return SimpleNamespace(points=points, connectivity=F, features=h0, norm=None)
 
-    template = SimpleNamespace(points=c, connectivity=F, features=h0, norm=None)
-    target = SimpleNamespace(points=c0, connectivity=F, features=h0, norm=None)
+    if space == "R6":
 
-    _summary("before", chord_errors(c, c0))
-    for deformation_kernel_width, data_kernel_width in stages:
-        c = _fit_stage(
-            c,
-            template,
-            target,
+        def objects(c):
+            return [(slice(None), template, target(c))]
+
+        def to_points(c):
+            return c
+
+        def to_chords(x):
+            return x
+    elif space == "R3":
+
+        def objects(c):
+            return [
+                (slice(0, n), template, target(c[:, :3])),
+                (slice(n, 2 * n), template, target(c[:, 3:])),
+            ]
+
+        def to_points(c):
+            return np.concatenate([c[:, :3], c[:, 3:]])
+
+        def to_chords(x):
+            return np.hstack([x[:n], x[n:]])
+    else:
+        raise ValueError(f"space must be 'R6' or 'R3', not {space!r}")
+
+    c = S[-1].copy()
+    back = [c]
+    for k in range(len(S) - 1, 0, -1):
+        x, info = _fit_step(
+            to_points(c),
+            objects(S[k - 1]),
             deformation_kernel_width=deformation_kernel_width,
             data_kernel_width=data_kernel_width,
             feature_kernel_width=feature_kernel_width,
@@ -236,13 +269,18 @@ def backflow(
             convergence_tolerance=convergence_tolerance,
             memory_length=memory_length,
         )
-        target.norm = target._extended_varifold = (
-            None  # the norm depends on the data kernel
+        c = to_chords(x)
+        back.append(c)
+        logger.info(
+            f"{space} {k} -> {k - 1}: {info}\n  {_summary(chord_errors(c, S[k - 1]))}"
         )
-        _summary(f"after {deformation_kernel_width} mm", errors := chord_errors(c, c0))
 
-    u_out = u_flow.with_stem(f"{u_flow.stem}-back")
-    v_out = v_flow.with_stem(f"{v_flow.stem}-back")
-    _write(u_out, pd_u, c[:, :3], errors)
-    _write(v_out, pd_u, c[:, 3:], errors)
-    return u_out, v_out
+    stem = f"{states_path.stem}-back-{space}"
+    back_path = states_path.with_name(f"{stem}.npz")
+    np.savez(back_path, faces=F, states=np.stack(back[::-1]))
+    errors = chord_errors(c, S[0])
+    u_out = states_path.with_name(f"{stem}-white.vtk")
+    v_out = states_path.with_name(f"{stem}-pial.vtk")
+    _write(u_out, c[:, :3], F, errors)
+    _write(v_out, c[:, 3:], F, errors)
+    return back_path, u_out, v_out
