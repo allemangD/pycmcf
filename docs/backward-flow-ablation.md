@@ -7,7 +7,7 @@ attachment fixes it depends on are in
 [extended-varifold-fixes.md](extended-varifold-fixes.md).
 
 Code: `src/flow.py` (forward flow, saves its states), `src/backflow.py` (backward flow) and
-`examples/main-backflow.py`. Helper scripts are in [`aux/`](aux/); see
+`examples/main-backflow.py`. Helper scripts are in [`util`](util/); see
 [Helper scripts](#helper-scripts).
 
 ## Setup
@@ -118,7 +118,7 @@ At the final state: max white error 2.53 mm, max pial error 4.42 mm, 0.2% of cho
 - **The max error grows in the last steps**, from 0.9 mm at state 15 to 2.5 mm at state 0.
   These outliers have not been located yet.
 
-**Single step from the true state** ([`aux/backflow_step.py`](aux/backflow_step.py)), for
+**Single step from the true state** ([`util`](util/backflow_step.py)), for
 comparison:
 
 | Step | White error p50 / p95 before → after (mm) | Chord angle p50 before → after (°) |
@@ -137,7 +137,7 @@ logs each iteration's rate, whether it was clipped, and the step sizes.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Forward step p95 (mm, R^6) | 3.0 | 4.9 | 7.4 | 9.6 | **10.4** | 9.4 (clipped) | 6.4 | 3.7 | 2.1 | 1.9 |
 
-**Schedule sweep** ([`aux/flow_schedule_sweep.py`](aux/flow_schedule_sweep.py)). The worst
+**Schedule sweep** ([`util`](util/flow_schedule_sweep.py)). The worst
 step excludes the final Q step. The last column compares each schedule's final pre-Q state
 with the default's.
 
@@ -188,7 +188,7 @@ vertices as control points, and two extended varifold attachments, white→white
 pial→pial. Both carry the same per-chord H⁰ pair. Everything else matches experiment 2.
 
 **Surface crossings in the forward states**
-([`aux/surface_crossings.py`](aux/surface_crossings.py)):
+([`util`](util/surface_crossings.py)):
 
 | State | 0 | 10 | 20 | 30 … 60 |
 |---|---|---|---|---|
@@ -265,7 +265,7 @@ the ablation does not inherit the older chords.
 
 ## Helper scripts
 
-All in [`aux/`](aux/); run from the repository root (they put `src/` on the path themselves).
+All in [`util`](util/); run from the repository root (they put `src/` on the path themselves).
 
 | Script | Purpose | Used for |
 |---|---|---|

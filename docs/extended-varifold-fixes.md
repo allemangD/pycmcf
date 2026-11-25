@@ -20,7 +20,7 @@ Code locations:
 - `src/chordal/differentiable_geometry.py` (normals, areas, H and tangent 2-vectors, all
   differentiable)
 
-Helper scripts are in [`aux/`](aux/). Each script states its usage in its docstring.
+Helper scripts are in [`util`](util/). Each script states its usage in its docstring.
 
 | # | Fix | Commit |
 |---|---|---|
@@ -84,7 +84,7 @@ almost a plain varifold. The formula also declared and passed an unused paramete
 | `oasis4-outer-decimated` | −0.966 / 0.088 / 0.709 | 0.839 | 3.2e−20 |
 
 So a strong gyral crown and a strong sulcal fundus were 84–86% "the same feature". The table
-comes from [`aux/check_attachment.py`](aux/check_attachment.py).
+comes from [`util`](util/check_attachment.py).
 
 **Fix: commensurate units.** The same σ can address both terms if the curvature term is
 scaled the other way: σ² |ΔH|² is dimensionless, like |x − y|²/σ². The feature width now
@@ -108,7 +108,7 @@ the object's own initial points, computed once and stored as `features`. No grad
 through it; normals and areas still carry gradients. The same mechanism carries
 `[H⁰_white, H⁰_pial]` per chord in R^6.
 
-**Check** ([`aux/check_attachment.py`](aux/check_attachment.py)):
+**Check** ([`util`](util/check_attachment.py)):
 
 - The directional derivative from autograd (−3.153771578) matches a central difference
   (−3.153771395).
@@ -164,9 +164,9 @@ cached. Net −21 lines.
 | R^6 `torch.autograd.gradcheck` (2-vectors and areas) | pass |
 | 3D attachment value, before vs after the refactor (float32, `oasis4` pair, σ = 4 mm) | 6.367820e6 / 6.367821e6, gradient norm 2.328775e4 both |
 
-The first five rows come from [`aux/check_geometry.py`](aux/check_geometry.py). The last row
+The first five rows come from [`util`](util/check_geometry.py). The last row
 was measured with the H recomputation and width of that time (before fixes 2 and 3), by
-running [`aux/check_attachment.py`](aux/check_attachment.py) from a worktree of the previous
+running [`util`](util/check_attachment.py) from a worktree of the previous
 commit and from the new tree.
 
 ## 7. NaN gradient at degenerate triangles (regression from 6)
@@ -179,7 +179,7 @@ all-NaN momenta and reconstruction (`data/outputs`, stopped at iteration 72).
 
 **Fix.** Clamp inside the square root: `(…).clamp_min(1e-30).sqrt()` (`2b9f323e`).
 
-**Reproduction** ([`aux/register_repro.py`](aux/register_repro.py), 150 iterations,
+**Reproduction** ([`util`](util/register_repro.py), 150 iterations,
 identical log-likelihoods up to the failure):
 
 | Code | Result |
@@ -200,7 +200,7 @@ smooth everywhere, and it would have made the separate cotangent clamps in `voro
 5e−11, and the attachment value and gradient norm agreed with the clamp in every printed digit.
 
 **Registrations did not.** Each `register()` iteration logs its line-search trials; the last
-value in a block is the accepted point ([`aux/plot_register_loss.py`](aux/plot_register_loss.py)
+value in a block is the accepted point ([`util`](util/plot_register_loss.py)
 counts them).
 
 | Run | Iterations | Stopped by | Final log-likelihood | Line-search trials | Trials > 2× accepted | Largest trial / accepted |
@@ -215,7 +215,7 @@ counts them).
 
 Every clamp run accepts nearly every first step. Every epsilon run proposes steps that blow
 the objective up by 10¹⁰–10²³, then stalls and stops. Reconstructions against the 500-iteration
-clamp run ([`aux/compare_recon.py`](aux/compare_recon.py)) track the iteration count, not the
+clamp run ([`util`](util/compare_recon.py)) track the iteration count, not the
 formula:
 
 | Reconstruction | Iterations | Distance from the 500-iteration clamp run, p50 / p95 / max (mm) | Distance to pial, p50 / p95 (mm) |
@@ -229,8 +229,8 @@ formula:
 Two clamp runs stopped at the same iteration differ by 0.16 mm at the median (150 vs 150).
 
 **Gradient spikes.** Recording the gradient with respect to the momenta at every accepted
-iteration ([`aux/register_trajectory.py`](aux/register_trajectory.py),
-[`aux/analyze_trajectory.py`](aux/analyze_trajectory.py); both runs at `ftol` 1e−6):
+iteration ([`util`](util/register_trajectory.py),
+[`util`](util/analyze_trajectory.py); both runs at `ftol` 1e−6):
 
 | Run | Iteration | Largest per-vertex gradient (median) | Smallest doubled area at that vertex (mm²) | \|Σn\| / Σ\|n\| at that vertex | Smallest doubled area in the mesh (mm²) |
 |---|---|---|---|---|---|
@@ -342,7 +342,7 @@ iteration 438 the remaining motion (0.14 mm median) is below the 0.16 mm by whic
 identical runs differ, so stopping there loses nothing that is reproducible anyway. On this
 subject it saves little time over the 500 cap, but the stop no longer depends on one step.
 
-**Verified** ([`aux/register_repro.py`](aux/register_repro.py) with the new defaults, a fresh
+**Verified** ([`util`](util/register_repro.py) with the new defaults, a fresh
 run): it stopped by the window rule at iteration 392 (relative improvement 9.9e−5 per
 iteration over the last 5), at log-likelihood −9.355e5, with no NaN. That is earlier than the
 simulated 438 because each run follows its own trajectory. Its reconstruction is 0.257 /
