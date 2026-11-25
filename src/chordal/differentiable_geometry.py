@@ -1,25 +1,17 @@
 """
-Differentiable replacements for the igl calls in MultiObjectAttachment.varifold_distance and
-extended_varifold_distance (deformetrica fork).
+Differentiable surface geometry for the extended varifold attachment (deformetrica fork,
+MultiObjectAttachment.extended_varifold_distance).
 
-The current code computes the source normals, areas and H from `pa.detach()` with igl, so the
-attachment gradient only flows through point positions. The objective the optimizer evaluates
-still depends on normals and areas, so the gradient it is given is not the gradient of that
-objective. The missing terms matter most in the source self-term, which turns into a pure
-repulsion between similarly-oriented source points: it pushes concave regions (sulcal fundi)
-and banks of narrow sulci into the white matter.
+Torch versions of igl.per_vertex_normals, igl.massmatrix (Voronoi) and igl.cotmatrix, plus the
+mean curvature H = <(L x) / a, n>, that keep the autograd graph. The attachment's gradient
+must flow through normals and areas, not only point positions; without those terms the source
+self-term becomes a plain repulsion that pushes sulcal fundi into the white matter (see
+docs/extended-varifold-fixes.md, fix 1). Checked on oasis4-inner-decimated: normals, areas,
+cotangent Laplacian and H match igl to round-off.
 
-These functions return the same values as the igl calls they replace (checked on
-oasis4-inner-decimated: normals, cotangent Laplacian and mean curvature to round-off; areas see
-note below), but keep the autograd graph.
-
-Drop-in use in extended_varifold_distance (source side only; the target stays constant):
-
-    faces = torch.as_tensor(fa, dtype=torch.long, device=points.device)
-    na, aa, ha = normals_areas_curvature(points, faces)      # instead of the igl calls
-    # ... the rest unchanged: wrap() passes tensors through, .type()/.to() keep the graph
-
-For varifold_distance use `na, aa, _ = normals_areas_curvature(points, faces, curvature=False)`.
+Normals and H are R^3 only. Areas, cotangents and tangent 2-vectors work in any dimension
+(used in R^6 by the backward flow). Degenerate triangles are handled by clamping inside the
+square root (see _double_area and docs/extended-varifold-fixes.md, fix 7).
 """
 import torch
 
