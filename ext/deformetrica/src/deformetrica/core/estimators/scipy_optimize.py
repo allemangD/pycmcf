@@ -36,6 +36,8 @@ class ScipyOptimize(AbstractEstimator):
         memory_length=default.memory_length,
         # parameters_shape, parameters_order, gradient_memory,
         max_line_search_iterations=default.max_line_search_iterations,
+        improvement_window=None,
+        improvement_tolerance=None,
         output_dir=default.output_dir,
         verbose=default.verbose,
         callback=None,
@@ -107,6 +109,15 @@ class ScipyOptimize(AbstractEstimator):
 
         self.memory_length = memory_length
         self.max_line_search_iterations = max_line_search_iterations
+
+        # Windowed stopping rule (off unless both are set): stop once the objective's relative
+        # improvement over the last `improvement_window` accepted iterations, averaged per
+        # iteration, falls below `improvement_tolerance`. Unlike scipy's ftol, which tests a
+        # single step, one small step (a stall in the line search) does not stop the fit.
+        self.improvement_window = improvement_window
+        self.improvement_tolerance = improvement_tolerance
+        self._accepted_costs = []
+        self._last_evaluation = None
 
     ####################################################################################################################
     ### Public methods:
@@ -310,6 +321,7 @@ class ScipyOptimize(AbstractEstimator):
 
         # Memory for exception handling.
         self._gradient_memory = gradient.astype("float64")
+        self._last_evaluation = (x.copy(), float(cost))
 
         # Return.
         return cost.astype("float64"), gradient.astype("float64")
@@ -327,12 +339,37 @@ class ScipyOptimize(AbstractEstimator):
 
         if not self.callback_ret or self.current_iteration == self.max_iterations + 1:
             raise StopIteration
+        if self._improvement_stalled(x):
+            raise StopIteration
         else:
             if (
                 self.verbose > 0
                 and not self.current_iteration % self.print_every_n_iters
             ):
                 self.print()
+
+    def _improvement_stalled(self, x):
+        """Windowed relative-improvement test on the accepted iterates (see __init__)."""
+        if self.improvement_window is None or self.improvement_tolerance is None:
+            return False
+        # the accepted point is normally the last evaluation; otherwise evaluate it
+        if self._last_evaluation is not None and np.array_equal(x, self._last_evaluation[0]):
+            cost = self._last_evaluation[1]
+        else:
+            cost = float(self._cost(x))
+        self._accepted_costs.append(cost)
+        w = self.improvement_window
+        if len(self._accepted_costs) <= w:
+            return False
+        old = self._accepted_costs[-1 - w]
+        rate = (old - cost) / (w * abs(cost))
+        if rate < self.improvement_tolerance:
+            logger.info(
+                f">> CONVERGENCE: relative improvement {rate:.2e} per iteration over the "
+                f"last {w} iterations < {self.improvement_tolerance:.0e}"
+            )
+            return True
+        return False
 
     def _get_parameters(self):
         """
