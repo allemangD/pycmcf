@@ -19,6 +19,8 @@ def register(
     use_sobolev=False,
     use_rk2=True,
     convergence_tolerance=1e-8,
+    improvement_window=5,
+    improvement_tolerance=1e-4,
     max_iterations=500,
     max_line_search_iterations=25,
     memory_length=15,
@@ -27,7 +29,13 @@ def register(
     deformation_kernel_width=4.00,
     verbose=2,
 ):
-    """Invoke Deformetrica DeterministicAtlas."""
+    """Invoke Deformetrica DeterministicAtlas.
+
+    Stops when the objective's relative improvement, averaged over the last
+    `improvement_window` iterations, falls below `improvement_tolerance` per iteration, or at
+    `max_iterations`. scipy's single-step `convergence_tolerance` stays as a backstop. See
+    docs/extended-varifold-fixes.md, "Stopping rule".
+    """
 
     TEMPLATE_OPTIONS = {
         "surface": {
@@ -78,6 +86,8 @@ def register(
         output_dir=str(output_dir.absolute()),
         state_file=str(output_dir.joinpath("deformetrica-state.p").absolute()),
         convergence_tolerance=convergence_tolerance,
+        improvement_window=improvement_window,
+        improvement_tolerance=improvement_tolerance,
         max_iterations=max_iterations,
         max_line_search_iterations=max_line_search_iterations,
         memory_length=memory_length,
