@@ -1,14 +1,29 @@
-# Backward flow: baseline and ablation (work in progress)
+# Backward flow and the annular s-rep: initial implementation
 
 This document records the decisions made, and the questions answered, while building a
-baseline backward flow for the chordal s-rep (`devel/allemang-2026.pdf`, §7 "future work").
-It also sets out the plan for the four-case ablation, which has not been run yet. The
+baseline backward flow and the annular s-rep (`devel/allemang-2026.pdf`, §3.1 and §7 "future
+work"). It also sets out the plan for the four-case ablation, which has not been run yet. The
 attachment fixes it depends on are in
 [extended-varifold-fixes.md](extended-varifold-fixes.md).
 
-Code: `src/flow.py` (forward flow, saves its states), `src/backflow.py` (backward flow) and
-`examples/main-backflow.py`. Helper scripts are in [`util`](util/); see
-[Helper scripts](#helper-scripts).
+**Status.** The initial implementation is complete:
+
+- the forward flow stops while the chord surface is an ellipsoid (experiment 5);
+- the surface s-rep is a frozen (θ1, θ2) grid on the fitted ellipsoid, evaluated on the
+  original chords with no backward flow (`srep.surface_srep`, experiment 5);
+- the backward flow reproduces the forward states (R6, 0.06 / 0.30 mm at state 0). In R3 it
+  can carry gray-matter points together with the s-rep's surface points, as one
+  diffeomorphism, but with the 5 mm kernel those points drift towards the pial side and
+  up to 27% leave the gray matter (experiment 6, negative).
+
+**Main caveat: chord selection.** The chords these results use slide along the surfaces and
+are noisy (see [Chord selection](#chord-selection-caveat)). The forward flow regularises
+them, but the backward flow restores the noise, and the surface s-rep inherits it directly.
+Improving chord selection is the next step.
+
+Code: `src/flow.py` (forward flow, saves its states), `src/backflow.py` (backward flow),
+`src/srep.py` (s-rep), `examples/main-6d-flow.py` and `examples/main-backflow.py`. Helper
+scripts are in [`util`](util/); see [Helper scripts](#helper-scripts).
 
 ## Setup
 
@@ -30,9 +45,12 @@ These chords therefore come from a registration made before attachment fixes 2, 
 exact code version was not recorded. 19,775 chords. The scratch outputs lived in
 `/tmp/bfcheck/` and are not tracked.
 
-**Forward flow, default schedule:** `rate_0 = 0.05`, `growth = 1.4`, `rate_max = 500`,
-`stop_speed = 1e-4`, `epsilon = 1e-4`. This takes 59 iterations, giving 61 states: the input,
-59 iterates, and the final chord-length projection Q.
+**Forward flow schedule:** `rate_0 = 0.05`, `growth = 1.4`, `rate_max = 500`,
+`epsilon = 1e-4`. Experiments 1–4 used `stop_speed = 1e-4`: 59 iterations, giving 61 states
+(the input, 59 iterates, and the final chord-length projection Q). Their backward flows
+started from the Q state, so their first step undid Q. Experiment 5 changed the default to
+`stop_speed = 1e-3` (35 iterations, 37 states), and `backflow()` now starts from the last
+iterate and ignores the Q state. Up to state 35 the two runs are identical.
 
 **Backward flow defaults (`backflow()`):**
 
@@ -59,15 +77,17 @@ exact code version was not recorded. 19,775 chords. The scratch outputs lived in
    file input and output only handle 2D and 3D.
 4. **Stage through the forward-flow states** rather than registering the final state to c₀ in
    one go (experiment 1 below). `flow()` saves every iterate to
-   `<white stem>-flow-states.npz`, with `faces` (m, 3), `states` (K+1, n, 6) and `rates` (K).
+   `<white stem>-flow-states.npz`, with `faces` (m, 3), `states` (K+2, n, 6) (the input, K
+   iterates and Q) and `rates` (K).
    This is also the intent of the evolutionary s-rep architecture.
 5. **Chain the steps.** Step k → k−1 starts from the previous step's *result*, not from the
    true state k, so errors accumulate as they would in a real backward flow. Every result is
    scored against the true state it targets.
 6. **All pairs, for now.** Every consecutive pair is fitted. Whether states can be skipped is
    open.
-7. **R6 over R3 (experiment 4).** Fitting white→white and pial→pial with one deformation of
-   R^3 loses the chord coupling.
+7. **R6 over R3 for the surfaces (experiment 4).** Fitting white→white and pial→pial with one
+   deformation of R^3 loses the chord coupling. R3 is kept for points inside the gray matter,
+   which R6 cannot represent, though not yet usable for them (experiment 6).
 
 ## Experiment 1: single-shot coarse-to-fine (rejected)
 
@@ -229,6 +249,210 @@ independently along their own surfaces, and the error builds up through the seco
 the backward flow. R6 moves each chord as one point, which keeps its length and direction
 together.
 
+## Experiment 5: annular s-rep on the ellipsoid
+
+Code: `src/srep.py` (`surface_srep`); `examples/main-backflow.py`. Scripts:
+[`ellipsoid_states.py`](util/ellipsoid_states.py) (fits per state),
+[`srep_schemes.py`](util/srep_schemes.py) (schemes A and B, failure analysis),
+[`plot_latitude_area.py`](util/plot_latitude_area.py) (latitudes).
+
+**Stop the forward flow while the surface is an ellipsoid.** An ellipsoid fit to each forward
+state (x = μ + A d, unit d, A of size 6 × 3), on the run of experiment 2. Skeleton
+semi-axes are those of the chord midpoints, in mm; residuals are midpoint residuals.
+
+| State | Skeleton semi-axes (mm) | Midpoint residual p50 / p95 (mm) | R^6 residual p50 / p95 (mm) |
+|---|---|---|---|
+| 30 | 68.8 / 44.6 / 32.2 | 1.18 / 3.76 | 1.68 / 5.33 |
+| 35 | 62.2 / 41.2 / 37.4 | 0.09 / 0.31 | 0.13 / 0.43 |
+| 40 | 58.9 / 47.7 / 46.4 | 0.04 / 0.12 | 0.06 / 0.17 |
+| 59 (last iterate at stop 1e-4) | 56.0 / 55.9 / 55.3, a sphere | 0.01 / 0.06 | 0.02 / 0.08 |
+
+The surface is ellipsoidal around states 34–40, then rounds into a sphere, as the paper
+expects. The default `stop_speed = 1e-4` ran 59 iterations, far past this. Mean speed is not
+monotone (7.8e-4 at state 36, 8.5e-4 at 40), and `stop_speed = 1e-3` stops at state 35. With
+the same parameters the states up to 35 are identical bit for bit, so this is only a change
+of value. The backward flow from state 35 gives the same mesh result as from state 60 (white
+error 0.06 / 0.30 mm at state 0) in 35 steps, 17 minutes.
+
+The long axis is L/R (x, in the LSA frame of the data), the middle A/P (z) and the short S/I
+(y); each lines up with its coordinate axis to within 0.06. The middle and short axes are only
+~10% apart at state 35, so they cannot orient the s-rep.
+
+**Frame convention.** θ1 is the polar angle from the end of the long axis towards `pole`
+(default L); θ2 = 0 lies towards `meridian` (default S). Only the long axis comes from the
+fit, so only two sign conventions are needed, not a fine pre-alignment.
+
+**Placing the samples.** Each grid direction is located in the sphere mesh (the
+triangulation at the fitted d of each chord): a radial projection, in the ellipsoid's
+normalised coordinates, onto the chord surface. The face and barycentric weights then give the
+sample in every state, since `flow()` keeps the triangulation. Four schemes were compared
+(R6, uniform 32 × 64 grid, white error at state 0 against the barycentric point of state 0):
+
+| Scheme | Start (state 35) | Back to state 0 | White error p50 / p95 (mm) | Chord angle p50 / p95 (°) |
+|---|---|---|---|---|
+| A | the ellipsoid point | shot through each step, Q at the end | 0.61 / 6.9 | 4.4 / 44 |
+| B | the barycentric point of the chord surface | shot through each step, Q at the end | 0.26 / 1.25 | 2.7 / 17 |
+| C | — | barycentric point of the backward-flowed mesh | 0.03 / 0.14 | — |
+| **D** | — | **barycentric point of the original mesh (no backward flow)** | **0 (exact)** | **0** |
+
+- **A.** Ellipsoid points sit off the surface by the fit residual (median 0.22 mm, up to
+  1.5 mm), and the backward flow, fitted only to the surface, amplifies the offset. The final
+  error grows with it (correlation 0.76): p50 0.33 mm below 0.1 mm offset, 9.2 mm for 1–2 mm.
+- **B.** 69 of 1,986 samples (3.5%) still fail by more than 2 mm, up to 20 mm, and leave the
+  surface (median 2.45 mm from the original white surface). All lie in the equatorial belt
+  (θ1 between 56° and 124°), on the faces that CMCF *dilates* most (original area 1/35 of the
+  median per unit of sphere area), around the midline at the centre of the brain. They are
+  not on the compression hot spot (25 mm away) or its tube artefacts. Going back, those
+  triangles shrink by up to about 6× linearly, and points inside them follow the smooth
+  velocity field, not the triangle. Elsewhere the error p95 is 0.6–0.8 mm.
+- **C and D** differ only by the backward flow's vertex error. With the triangulation kept,
+  the forward mesh already carries the correspondence, so the backward flow adds nothing to
+  surface samples.
+
+Shot points are carried as extra control points with zero momenta, so they share the mesh's
+integrator exactly (a separate non-dense shoot integrates differently: 0.02 mm per step).
+
+**Decision: D for the surface s-rep** (`srep.surface_srep`). Its chords have their true
+length, so no Q is needed. The backward flow is kept for what the mesh cannot give: points
+off the surface. In R6 a point is a whole chord, so depth along it is linear by construction;
+gray-matter points need the R3 flow, carried together with the s-rep's surface points so that
+both come from one diffeomorphism. Applications that need only surface points use D; those
+that need both should use the shared R3 diffeomorphism, once it resolves the thickness
+(experiment 6: with the 5 mm kernel it does not).
+
+**Latitude spacing.** CMCF compresses each hemisphere's lateral surface into a cap of about
+35° around its L/R pole, at 3.3–3.7 times the uniform density, and stretches the midline
+into an equatorial belt at 0.12–0.2 times, per unit sphere area
+([plot](srep-latitude-area.png): pdf per degree of θ1, raw and floored cdfs, ring latitudes;
+`docs/util/plot_latitude_area.py`). Equal steps in θ1 therefore put most samples where there is
+least cortex (cortical area per sample varies 13 times). Rings are placed at quantiles of
+the cortical area over θ1, averaged over the dataset and frozen (`equal_area_latitudes`,
+`save_sampling`). Every case uses the same Cartesian (θ1, θ2) grid; cases added later reuse
+the frozen sampling. For this subject, with 32 bands, the rings fall at 11.1, 15.3, 18.8, …,
+54.2, 65.4, 90, 114.6, 125.8, … 168.9°.
+
+Smooth forms for the latitudes, symmetric with fixed poles:
+
+| Form | Max deviation from quantiles | Monotone | Cortical area per ring, min / max (equal = 1) |
+|---|---|---|---|
+| uniform | 25.7° | yes | 0.18 / 2.40 |
+| odd cubic / quintic | 18.2° / 13.7° | no | — |
+| odd 9th degree | 8.9° | yes | 0.14 / 1.82 |
+| π s + 2 sine terms | 10.9° | yes | 0.06 / 1.96 |
+| π s + 4 sine terms | 6.0° | yes | 0.36 / 1.58 |
+
+The quantile function is nearly a step across the belt, so no low-order curve is simpler in
+practice than the table of latitudes.
+
+**A floor in the belt.** The most compressed 5% of faces lie in the belt, around
+(1, −22, −52), and straddle the midline: the sulcus of the corpus callosum. Their extreme
+compression is a segmentation artefact: the imaging does not separate the sulcal banks that
+run parallel to the corpus callosum, so the mesh has long thin tubes there. The sulcus itself
+is real, so the belt should be sampled a little more densely than the quantiles give.
+`equal_area_latitudes(..., uniform_fraction=α)` mixes the area CDF with a uniform one: a
+fraction α of the rings is spaced evenly in θ1. For this subject, with 32 bands:
+
+| α | Rings in 60–120° | Ring spacing at the equator | Cortical area per ring, min / max (equal = 1) |
+|---|---|---|---|
+| 0 (quantiles) | 3 | 24.6° | 1.00 / 1.00 |
+| 0.2 (example default) | 5 | 15.7° | 0.55 / 1.14 |
+| 0.3 | 5 | 13.0° | 0.43 / 1.22 |
+| 0.5 | 7 | 9.5° | 0.31 / 1.42 |
+| 1 (uniform) | 11 | 5.6° | 0.18 / 2.40 |
+
+The floor also smooths the quantile function: with α = 0.2, π s + 2 sine terms fit the
+latitudes to within 4.3° and 4 terms to within 2.5° (10.9° and 6.0° without it).
+
+**Symmetric about the equator.** The area CDF is symmetrised, so with an even number of bands
+the middle ring lies at exactly 90° and separates the hemispheres: θ1 < 90° is L (the pole
+side), θ1 > 90° is R. The hemispheres do differ, but little. Without symmetrisation, 49.96% of
+the cortex lies in the L half, the CDF is within 0.0035 of its symmetrised form, and no ring
+moves by more than 0.5° (0.2° with α = 0.2), so the clean hemisphere split is worth more.
+
+## Experiment 6: gray-matter points through the R3 backward flow (negative)
+
+[`interior_r3.py`](util/interior_r3.py). The s-rep grid (32 bands, α = 0.2, 1,986 samples) on
+the last CMCF iterate, with points at depths τ = 0, 0.25, 0.5, 0.75 and 1 along each sample
+chord, all carried by one R3 backward flow (`backflow(..., space="R3", carry=...)`; 35 steps,
+all at the iteration cap, ~20 minutes, no NaNs; mesh white error at state 0 0.55 / 1.43 mm).
+Compared at state 0 with the straight chords of the surface s-rep (D).
+
+| Depth τ | Carried vs straight, p50 / p95 / max (mm) | Inside white, carried / straight | Outside pial, carried / straight |
+|---|---|---|---|
+| 0 (white) | 0.52 / 1.28 / 4.64 | — | — |
+| 0.25 | 2.92 / 6.95 / 10.94 | 5.4% / 1.4% | 3.5% / 0.15% |
+| 0.5 | 3.15 / 6.68 / 10.13 | 1.9% / 0.55% | 12.5% / 0.40% |
+| 0.75 | 2.12 / 4.31 / 7.75 | 0.81% / 0.15% | 27.5% / 0.81% |
+| 1 (pial) | 0.53 / 1.30 / 3.29 | — | — |
+
+**The interior points do not hold their depth.** Along each carried chord (s = 0 at the white
+end, 1 at the pial end), they drift towards the pial side while the cortex thickens back
+from 2.2 mm (state 35) to 4.8 mm, mostly between states 30 and 10:
+
+| State | Chord p50 | τ = 0.25: s p50 [p5, p95] | τ = 0.5 | τ = 0.75 | Off the chord p50 (τ = 0.5) |
+|---|---|---|---|---|---|
+| 35 | 2.19 mm | 0.25 | 0.50 | 0.75 | 0 |
+| 30 | 2.26 mm | 0.24 [0.20, 0.29] | 0.49 [0.43, 0.56] | 0.74 [0.69, 0.79] | 0.33 mm |
+| 20 | 3.58 mm | 0.40 [0.16, 0.78] | 0.68 [0.37, 0.95] | 0.87 [0.64, 1.00] | 1.70 mm |
+| 0 | 4.83 mm | 0.37 [−0.16, 1.20] | 0.63 [0.00, 1.34] | 0.84 [0.34, 1.27] | 2.33 mm |
+
+The 5 mm deformation kernel is wider than the cortex is thick (2–5 mm), so the velocity field
+cannot make the white and pial surfaces move differently across the gap without large,
+nearly cancelling momenta. Between the surfaces it is then a poor interpolation of their
+motion, not a map of the columns. Points on the surfaces are pinned by the attachment;
+points between them are not. The intuition that interior points would be better conditioned
+holds only if the kernel resolves the thickness.
+
+The prism test of the script (inverted tetrahedra between depth layers: 0% at state 35,
+19.8% carried and 2.7% straight at state 0) is not a valid fold detector here: the grid
+triangles are ~8 mm wide, and in folded cortex a diffeomorphism can invert straight-edged
+tetrahedra of that size.
+
+**Status.** The machinery stays (`carry`, `srep.depth_points`, the script), but carried
+gray-matter points are not usable with these settings. Candidates: a deformation kernel
+narrower than the thickness (1–2 mm), at least for the steps where the thickness changes
+(states 30 → 10); more time points per step; or a column construction that does not rely on
+the flow (e.g. Laplace streamlines between the surfaces).
+
+## Chord selection (caveat)
+
+[`chord_quality.py`](util/chord_quality.py), on the chords of experiment 2 (from a
+registration before fixes 2, 3 and 7). Prisms are between the depth layers 0, 0.5 and 1
+over each mesh face; "leaves gray matter" means a point at depth 0.25, 0.5 or 0.75 lies
+inside the white surface or outside the pial surface.
+
+| Chords at state 0 | Length p50 | Angle to white normal p50 / p90 | Neighbour spread p50 / p90 | Leaves gray matter | Faces with an inverted prism |
+|---|---|---|---|---|---|
+| registration (ours) | 4.67 mm | 46° / 73° | 29° / 52° | 3.9% | 12.0% |
+| nearest pial point (geometry only) | 2.90 mm | 27° / 76° | 68° / 140° | 5.6% | 24.1% |
+| R6 backward flow | 4.67 mm | 46° / 73° | 29° / 52° | 3.3% | 11.6% |
+| R3 backward flow | 4.81 mm | 45° / 74° | 29° / 51° | 3.0% | 13.4% |
+
+- **Mostly chord selection.** The chords are 60% longer than the distance to the nearest
+  pial point and lean 46° from the normal: the registration slides correspondence along the
+  surfaces. The chords that leave the gray matter lean most (median 76°). The surfaces cross
+  at only 0.25% of vertices, which accounts for 10% of them; for the rest both ends are on
+  the right side and the straight segment between them is not.
+- **Not entirely.** Nearest-point chords are worse still. A straight segment cannot follow a
+  curved column, so in folds tighter than the thickness neighbouring chords fan out or cross
+  whatever the correspondence, and the 90% decimation (edges of 2–5 mm, about the thickness)
+  adds to it.
+- **The forward flow regularises the chords; the backward flow restores the noise.** Against
+  the midpoint-surface normal:
+
+  | State | 0 | 10 | 20 | 30 | 35 |
+  |---|---|---|---|---|---|
+  | Angle p50 / p90 | 43° / 66° | 37° / 58° | 10° / 21° | 24° / 43° | 21° / 34° |
+  | Neighbour spread p50 / p90 | 29° / 52° | 22° / 41° | 6° / 13° | 1.7° / 3.9° | 1.3° / 3.7° |
+
+  Both backward flows end with chords as noisy as the originals, R3 included, although its
+  attachments never see the pairing. The composed backward deformation must rebuild
+  millimetre folds, so its derivative varies at that scale and turns the smooth state-35
+  chords back into noisy ones. The staged steps are too small for the attachment and
+  regularity to choose another pairing, which is why both reproduce the forward
+  correspondence (0.06 mm in R6, 0.65 mm in R3). So the backward flow does not regularise
+  chord selection; that has to happen at the registration.
+
 ## Plan: four-case ablation (not run)
 
 A progression from the upstream baseline to the final method. Rows 1 and 4 are the endpoints
@@ -251,6 +475,16 @@ the ablation does not inherit the older chords.
 
 ## Open questions
 
+- **Gray-matter points.** Experiment 6 lists candidates: a deformation kernel narrower than
+  the thickness, more time points, or columns from outside the flow.
+- **Chord selection.** Re-register with the current `register()` (fixes 2, 3 and 7), and
+  perhaps a less decimated mesh or stronger regularity, then rerun
+  [`chord_quality.py`](util/chord_quality.py). See [Chord selection](#chord-selection-caveat).
+- **Segmentation tubes.** The callosal sulcus has thin tube artefacts (experiment 5). A
+  numerical detector: inward thickness (shape diameter) under ~1 mm, convex across with
+  radius about half that, near-zero curvature along, an elongated connected component, and a
+  normal outward gap. The 90% decimated mesh smooths them below these thresholds (≤ 2% of
+  hot-spot vertices under 1 mm), so calibrate on the full-resolution surfaces.
 - **Skipping states.** The early steps (states 0–20, under ~1 mm each) contribute ~0.05 mm of
   error and most of the run time. Experiment 3 suggests merging them by raising the base rate
   is the wrong approach.
@@ -261,7 +495,8 @@ the ablation does not inherit the older chords.
 - **Kernel widths.** Fixed at 5 mm. Detail is removed fine to coarse, so the widths should
   probably follow the flow.
 - **Optimism.** The targets are the exact forward states, and H⁰ is identical on both sides.
-  A backward flow from a fitted s-rep will have neither advantage.
+  A backward flow for a case without its own forward states (e.g. from a population s-rep)
+  would have neither advantage.
 
 ## Helper scripts
 
@@ -277,6 +512,11 @@ All in [`util`](util/); run from the repository root (they put `src/` on the pat
 | `surface_crossings.py` | white/pial crossings per forward state | experiment 4 |
 | `backflow_step.py` | one backward step from the true state, R6 or R3 | experiments 2, 4 |
 | `compare_backflow.py` | per-state errors of one or more backward runs | experiments 2–4 |
+| `plot_latitude_area.py` | cortical area density over θ1 and ring latitudes, over one or more cases | experiment 5 |
+| `ellipsoid_states.py` | ellipsoid fit and mean speed per forward state | experiment 5 |
+| `srep_schemes.py` | s-rep samples shot through the R6 backward flow (schemes A, B), failure analysis, compression VTKs | experiment 5 |
+| `interior_r3.py` | s-rep surface and gray-matter points carried by the R3 backward flow, vs straight chords | experiment 6 |
+| `chord_quality.py` | chords as columns: obliquity, neighbour spread, leaving the gray matter, inverted prisms; forward-flow regularisation | chord selection |
 
 Example, from the repository root:
 
@@ -287,5 +527,6 @@ Example, from the repository root:
     python docs/util/compare_backflow.py /tmp/sweep/default/oasis4-inner-decimated-flow-states.npz \
         /tmp/sweep/default/oasis4-inner-decimated-flow-states-back-R6.npz
 
-The full backward runs use `src/backflow.py` directly; `examples/main-backflow.py` runs R6 and
-R3 on the states written by `examples/main-6d-flow.py`.
+The full backward runs use `src/backflow.py` directly. `examples/main-backflow.py` freezes the
+s-rep sampling, writes each case's surface s-rep, and runs the R6 and R3 backward flows on the
+states written by `examples/main-6d-flow.py`.

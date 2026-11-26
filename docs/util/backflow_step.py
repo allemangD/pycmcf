@@ -38,7 +38,7 @@ else:
         (slice(0, n), template, target(S[k - 1, :, :3])),
         (slice(n, 2 * n), template, target(S[k - 1, :, 3:])),
     ]
-x, info = bf._fit_step(
+x, _, info = bf._fit_step(
     x0,
     objects,
     deformation_kernel_width=5.0,

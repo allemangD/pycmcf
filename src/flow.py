@@ -11,6 +11,15 @@ from vtkmodules.vtkIOLegacy import vtkPolyDataReader, vtkPolyDataWriter
 logger = logging.getLogger(__name__)
 
 
+def chord_length_projection(c, length):
+    """Q: moves both ends of each chord c = (u, v) along the chord, keeping its midpoint,
+    so that |u - v| = length (n, 1)."""
+    diff = c[:, :3] - c[:, 3:]
+    dist = np.linalg.norm(diff, axis=1, keepdims=True)
+    fixup = -diff / dist * (dist - length) / 2
+    return np.hstack([c[:, :3] + fixup, c[:, 3:] - fixup])
+
+
 def flow(
         u_path: Path,
         v_path: Path,
@@ -19,9 +28,18 @@ def flow(
         growth=1.4,
         rate_max=500,
         max_iters=100,
-        stop_speed=1e-4,
+        stop_speed=1e-3,
         epsilon=1e-4,
 ):
+    """Chordal CMCF of the chord surface (u, v) in R^6, then the chord-length projection Q.
+
+    stop_speed: the default stops while the surface is still an ellipsoid (about 35
+        iterations on oasis4); by 1e-4 it is a sphere and the s-rep's long axis is lost
+        (docs/backward-flow-ablation.md, experiment 5).
+    Writes <stem>-flow.vtk for both surfaces and <u stem>-flow-states.npz with faces (m, 3),
+    states (K+2, n, 6) (the input, the K iterates, and Q of the last one) and rates (K).
+    Returns the three paths.
+    """
     pipe = vtkPolyDataReader()
     pipe.file_name = u_path
     pipe.Update()
@@ -98,14 +116,7 @@ def flow(
 
     cc[...] += cc_cent
 
-    diff = uu - vv
-    dist = np.linalg.norm(diff, axis=1, keepdims=True)
-    norm = diff / dist
-    extra = dist - true_dist
-    fixup = -norm * extra / 2
-
-    uu[...] += fixup
-    vv[...] -= fixup
+    cc[...] = chord_length_projection(cc, true_dist)
     states.append(cc.copy())  # the chord-length projection Q is the last stage
 
     states_path = u_path.with_name(f"{u_path.stem}-flow-states.npz")

@@ -38,7 +38,8 @@ for name, kwargs in VARIANTS.items():
     d = out / name
     d.mkdir(parents=True, exist_ok=True)
     u, v = shutil.copy(white, d), shutil.copy(pial, d)
-    *_, states = flow(Path(u), Path(v), max_iters=400, **kwargs)
+    # stop_speed 1e-4: the run to near-convergence of experiment 3 (flow() now stops at 1e-3)
+    *_, states = flow(Path(u), Path(v), max_iters=400, stop_speed=1e-4, **kwargs)
     z = np.load(states)
     S, rates = z["states"], z["rates"]
     steps = np.linalg.norm(np.diff(S[:-1], axis=0), axis=2)

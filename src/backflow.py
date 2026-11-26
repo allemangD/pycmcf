@@ -21,6 +21,10 @@ Two spaces, compared as an ablation (outputs are tagged with the space):
   - "R3" (ablation): one diffeomorphism of R^3 acting on the white and pial surfaces together
     (2n control points); two attachments, white -> white and pial -> pial, both carrying the
     same per-chord H0 pair. The two surfaces must then stay disjoint in R^3 at every state.
+
+The flow starts from the last CMCF iterate, not from the chord-length projection Q that
+flow() saves last. Extra points (`carry`) can be shot along with the mesh; in R3 this gives
+one diffeomorphism for surface and gray-matter points (srep.depth_points).
 """
 
 import logging
@@ -114,10 +118,13 @@ def _fit_step(
     max_iterations,
     convergence_tolerance,
     memory_length,
+    extra=None,
 ):
-    """One dense LDDMM fit from points x0 (m, d); returns the deformed points.
+    """One dense LDDMM fit from points x0 (n, d); returns the deformed points, the deformed
+    extra points (m, d) (or None) and a log line.
 
     objects: (rows of x0, template, target) per attachment; the distances are summed.
+    extra: points carried by the fitted deformation without entering the fit.
     """
     deformation = KeopsKernel(kernel_width=deformation_kernel_width)
     data = KeopsKernel(
@@ -189,7 +196,18 @@ def _fit_step(
         result.x.reshape(x0.shape), device=device, dtype=dtype
     )
     with torch.no_grad():
-        return shoot(momenta).detach().cpu().numpy().astype(np.float64), info
+        if extra is None:
+            return shoot(momenta).detach().cpu().numpy().astype(np.float64), None, info
+        # Dense mode moves only the control points. Extra points ride along as control points
+        # with zero momenta: they do not change the velocity field, their momenta stay zero,
+        # and they share the control points' integrator exactly.
+        extra = utilities.move_data(extra, device=device, dtype=dtype)
+        exponential.set_initial_control_points(torch.cat([cp, extra]))
+        exponential.set_initial_template_points({"landmark_points": torch.cat([cp, extra])})
+        exponential.set_initial_momenta(torch.cat([momenta, torch.zeros_like(extra)]))
+        exponential.update()
+        x = exponential.get_template_points()["landmark_points"].cpu().numpy().astype(np.float64)
+        return x[: len(x0)], x[len(x0) :], info
 
 
 def backflow(
@@ -205,19 +223,31 @@ def backflow(
     max_iterations=100,
     convergence_tolerance=1e-8,
     memory_length=15,
+    carry=None,
 ):
-    """Flow the last saved forward-flow state back to the first, one saved step at a time.
+    """Flow the last CMCF iterate back to the first state, one saved step at a time.
 
-    states_path: the .npz written by flow.flow() (faces (m, 3), states (K+1, n, 6)).
+    states_path: the .npz written by flow.flow() (faces (m, 3), states (K+2, n, 6): the
+        input, K CMCF iterates and the chord-length projection Q). The backward flow starts
+        from the last CMCF iterate; the Q state is not used.
     space: "R6" (baseline) or "R3" (ablation); see the module docstring.
     feature_kernel_width: width of the H0 kernel in 1/mm; None for the commensurate
         1 / data kernel width, as in register().
-    Writes <stem>-back-<space>.npz (the backward states as chords, aligned with the forward
-    ones) and <stem>-back-<space>-{white,pial}.vtk (the final result, with per-vertex errors against state 0:
-    white_error, pial_error, chord_length_error, chord_angle). Returns the three paths.
+    carry: optional points (p, 6) for R6 or (p, 3) for R3, at the last CMCF iterate, that
+        every step's deformation carries along with the mesh (as zero-momentum control
+        points; they do not enter the fit). In R3 these can be points inside the gray matter
+        and the s-rep's surface points together, so that both come from one diffeomorphism
+        (with a kernel wider than the thickness the interior points drift: see
+        docs/backward-flow-ablation.md, experiment 6).
+
+    Writes <stem>-back-<space>.npz (states: the backward states as chords, aligned with the
+    forward ones; with carry, carried (K+1, p, d) also aligned) and
+    <stem>-back-<space>-{white,pial}.vtk (the final result, with per-vertex errors against
+    state 0: white_error, pial_error, chord_length_error, chord_angle). Returns the paths,
+    npz first.
     """
     z = np.load(states_path)
-    F, S = z["faces"].astype(np.int64), z["states"]
+    F, S = z["faces"].astype(np.int64), z["states"][:-1]  # drop the Q state
     h0 = np.stack(
         [mean_curvature(S[0, :, :3], F), mean_curvature(S[0, :, 3:], F)], axis=1
     )
@@ -249,14 +279,16 @@ def backflow(
             return np.concatenate([c[:, :3], c[:, 3:]])
 
         def to_chords(x):
-            return np.hstack([x[:n], x[n:]])
+            return np.hstack(np.split(x, 2))
     else:
         raise ValueError(f"space must be 'R6' or 'R3', not {space!r}")
+    if carry is not None and carry.shape[1] != (6 if space == "R6" else 3):
+        raise ValueError(f"carry must have {6 if space == 'R6' else 3} columns in {space}")
 
     c = S[-1].copy()
-    back = [c]
+    back, carried = [c], [carry]
     for k in range(len(S) - 1, 0, -1):
-        x, info = _fit_step(
+        x, y, info = _fit_step(
             to_points(c),
             objects(S[k - 1]),
             deformation_kernel_width=deformation_kernel_width,
@@ -268,19 +300,23 @@ def backflow(
             max_iterations=max_iterations,
             convergence_tolerance=convergence_tolerance,
             memory_length=memory_length,
+            extra=carried[-1],
         )
         c = to_chords(x)
         back.append(c)
+        carried.append(y)
         logger.info(
             f"{space} {k} -> {k - 1}: {info}\n  {_summary(chord_errors(c, S[k - 1]))}"
         )
 
     stem = f"{states_path.stem}-back-{space}"
-    back_path = states_path.with_name(f"{stem}.npz")
-    np.savez(back_path, faces=F, states=np.stack(back[::-1]))
+    out = dict(faces=F, states=np.stack(back[::-1]))
+    if carry is not None:
+        out["carried"] = np.stack(carried[::-1])
+    paths = [states_path.with_name(f"{stem}.npz")]
+    np.savez(paths[0], **out)
     errors = chord_errors(c, S[0])
-    u_out = states_path.with_name(f"{stem}-white.vtk")
-    v_out = states_path.with_name(f"{stem}-pial.vtk")
-    _write(u_out, c[:, :3], F, errors)
-    _write(v_out, c[:, 3:], F, errors)
-    return back_path, u_out, v_out
+    for name, V in (("white", c[:, :3]), ("pial", c[:, 3:])):
+        paths.append(states_path.with_name(f"{stem}-{name}.vtk"))
+        _write(paths[-1], V, F, errors)
+    return tuple(paths)

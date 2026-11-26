@@ -22,5 +22,6 @@ print(f"decimation outputs:\n  {moving}\n  {fixed}")
 moving, fixed = register(moving, fixed, output_dir=aux_outputs)
 print(f"deformetrica outputs:\n  {moving}\n  {fixed}")
 
-moving, fixed, states = flow(moving, fixed, stop_speed=1e-4, max_iters=100)
+# the default stop_speed (1e-3) stops while the surface is still an ellipsoid
+moving, fixed, states = flow(moving, fixed)
 print(f"chordal flow outputs:\n  {moving}\n  {fixed}\n  {states}")
